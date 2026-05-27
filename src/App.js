@@ -69,7 +69,7 @@ function computeStats(sessions) {
     totalDevices: Object.keys(DEVICE_NAMES).length,
     horarioPico: peakSlot.sessoes > 0 ? peakSlot.hora : "—",
     duracaoMedia: avgDur,
-    byHour: byHour.slice(5, 23),
+    byHour: byHour.slice(0, 24),
     ranking,
     maxRank,
     ultimas: [...sessions].reverse().slice(0, 10),
