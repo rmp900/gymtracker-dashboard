@@ -181,6 +181,8 @@ export default function GymTracker() {
         @keyframes barGrow { from { width: 0 } to { width: var(--w) } }
         .rank-bar-fill { animation: barGrow 0.6s ease both; }
         tr:hover td { background: #fafaf8 !important; }
+        .gt-subheader { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 28px; background: ${OD}; }
+        @media (max-width: 480px) { .gt-subheader { padding: 6px 16px; } }
       `}</style>
 
       {/* ── Header ── */}
@@ -188,37 +190,36 @@ export default function GymTracker() {
         background: O,
         backgroundImage: "repeating-linear-gradient(135deg, transparent, transparent 20px, rgba(0,0,0,0.04) 20px, rgba(0,0,0,0.04) 22px)",
         padding: "0 28px",
-        display: "flex", alignItems: "center", gap: 16,
-        height: 60, flexShrink: 0,
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        height: 56, flexShrink: 0,
       }}>
-        <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 22, fontWeight: 800, color: WHITE, letterSpacing: "0.03em" }}>
+        <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 22, fontWeight: 800, color: WHITE, letterSpacing: "0.03em", whiteSpace: "nowrap" }}>
           GYMTRACKER
         </div>
-        <div style={{ width: 1, height: 24, background: "rgba(255,255,255,0.3)" }} />
-        <div style={{ fontSize: 13, color: "rgba(255,255,255,0.85)", fontWeight: 500, textTransform: "capitalize" }}>
-          {dataLabel}
-        </div>
 
-        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 12 }}>
-          {loading && !sessions.length ? null : (
-            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.75)" }}>
-              {lastUpdate ? `Atualizado ${fmtHora(lastUpdate)}` : ""}
-            </div>
-          )}
+        <div style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(255,255,255,0.18)", borderRadius: 20, padding: "4px 12px", whiteSpace: "nowrap", flexShrink: 0 }}>
           <div style={{
-            display: "flex", alignItems: "center", gap: 6,
-            background: "rgba(255,255,255,0.18)", borderRadius: 20,
-            padding: "4px 12px", fontSize: 12, fontWeight: 600, color: WHITE,
-          }}>
-            <div style={{
-              width: 7, height: 7, borderRadius: "50%", background: WHITE,
-              animation: error || corsError ? "none" : "fadeUp 1s infinite alternate",
-              opacity: error || corsError ? 0.4 : 1,
-            }} />
+            width: 7, height: 7, borderRadius: "50%", background: WHITE, flexShrink: 0,
+            animation: error || corsError ? "none" : "fadeUp 1s infinite alternate",
+            opacity: error || corsError ? 0.4 : 1,
+          }} />
+          <span style={{ fontSize: 12, fontWeight: 600, color: WHITE }}>
             {error || corsError ? "OFFLINE" : loading ? "CONECTANDO" : "AO VIVO"}
-          </div>
+          </span>
         </div>
       </header>
+
+      {/* ── Sub-header: data e última atualização ── */}
+      <div className="gt-subheader">
+        <span style={{ fontSize: 12, color: "rgba(255,255,255,0.8)", fontWeight: 500, textTransform: "capitalize" }}>
+          {dataLabel}
+        </span>
+        {lastUpdate && (
+          <span style={{ fontSize: 11, color: "rgba(255,255,255,0.55)", whiteSpace: "nowrap" }}>
+            Atualizado {fmtHora(lastUpdate)}
+          </span>
+        )}
+      </div>
 
       {/* ── Content ── */}
       <main style={{ padding: "24px 28px", maxWidth: 1200, margin: "0 auto" }}>
