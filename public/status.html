@@ -5,130 +5,124 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>GymTracker — Status da Academia</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&display=swap');
   *{box-sizing:border-box;margin:0;padding:0}
-  body{font-family:'Inter',sans-serif;background:#0a0a0a;color:#f0f0f0;min-height:100vh;padding:1.5rem 1rem 3rem}
-  .wrap{max-width:400px;margin:0 auto}
-  .logo{display:flex;align-items:center;gap:10px;margin-bottom:2rem}
-  .logo-mark{width:36px;height:36px;background:#1D9E75;border-radius:10px;display:flex;align-items:center;justify-content:center}
-  .logo-mark svg{width:20px;height:20px;stroke:#fff;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-  .logo-name{font-size:18px;font-weight:600;color:#f0f0f0;letter-spacing:-.3px}
-  .logo-name span{color:#1D9E75}
-  .tagline{font-size:12px;color:#666;margin-top:1px}
+  body{font-family:'Inter',sans-serif;background:#f5f3ef;color:#1a1a1a;min-height:100vh}
 
-  /* Status principal */
-  .status-card{background:#141414;border:1px solid #222;border-radius:16px;padding:1.5rem;margin-bottom:1rem}
-  .status-label{font-size:11px;font-weight:500;letter-spacing:.08em;color:#555;text-transform:uppercase;margin-bottom:1rem}
+  .header{background:#E8500A;padding:1rem 1.25rem .875rem;display:flex;align-items:center;justify-content:space-between}
+  .header-logo{display:flex;align-items:center;gap:8px}
+  .header-dot{width:10px;height:10px;border-radius:50%;background:#fff;opacity:.9}
+  .header-name{font-size:16px;font-weight:800;color:#fff;letter-spacing:.5px;text-transform:uppercase}
+  .header-live{font-size:11px;font-weight:500;color:#fff;opacity:.8}
+
+  .wrap{padding:1.25rem 1rem 3rem;max-width:420px;margin:0 auto}
+
+  .card{background:#fff;border-radius:14px;padding:1.25rem;margin-bottom:.875rem;border:1px solid #e8e4dc}
+  .sec{font-size:10px;font-weight:700;letter-spacing:.1em;color:#E8500A;text-transform:uppercase;margin-bottom:.875rem}
+
+  /* Status */
   .status-body{display:flex;align-items:center;gap:1.25rem}
-  .status-figure{flex-shrink:0}
-  .status-text{}
-  .status-title{font-size:22px;font-weight:600;line-height:1.2;color:#f0f0f0}
-  .status-sub{font-size:13px;color:#666;margin-top:5px}
+  .status-title{font-size:22px;font-weight:800;color:#1a1a1a;line-height:1.2}
+  .status-sub{font-size:13px;color:#888;margin-top:5px;font-weight:400}
   .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:7px;vertical-align:middle}
 
   /* Fechada */
-  .closed-card{background:#141414;border:1px solid #222;border-radius:16px;padding:2rem 1.5rem;margin-bottom:1rem;text-align:center}
-  .closed-icon{font-size:40px;margin-bottom:.75rem;opacity:.4}
-  .closed-title{font-size:20px;font-weight:600;color:#f0f0f0}
-  .closed-sub{font-size:13px;color:#555;margin-top:6px}
-
-  /* Seção */
-  .sec{font-size:11px;font-weight:500;letter-spacing:.08em;color:#555;text-transform:uppercase;margin-bottom:.75rem}
+  .closed-card{background:#fff;border:1px solid #e8e4dc;border-radius:14px;padding:2rem 1.5rem;margin-bottom:.875rem;text-align:center}
+  .closed-icon{font-size:38px;margin-bottom:.75rem}
+  .closed-title{font-size:20px;font-weight:800;color:#1a1a1a}
+  .closed-sub{font-size:13px;color:#888;margin-top:6px}
 
   /* Músculos */
-  .muscles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:1rem}
-  .mc{background:#141414;border:1px solid #222;border-radius:12px;padding:.875rem .625rem;text-align:center}
+  .muscles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:.875rem}
+  .mc{background:#fff;border:1px solid #e8e4dc;border-radius:12px;padding:.875rem .5rem;text-align:center}
   .mc-rank{font-size:22px;margin-bottom:4px}
-  .mc-name{font-size:12px;font-weight:500;color:#ccc}
-  .mc-count{font-size:11px;color:#555;margin-top:2px}
-  .mc-bar{height:3px;border-radius:2px;background:#222;margin-top:8px;overflow:hidden}
-  .mc-fill{height:100%;border-radius:2px;background:#1D9E75;transition:width .4s ease}
+  .mc-name{font-size:12px;font-weight:700;color:#1a1a1a}
+  .mc-count{font-size:11px;color:#aaa;margin-top:2px}
+  .mc-bar{height:3px;border-radius:2px;background:#f0ede8;margin-top:8px;overflow:hidden}
+  .mc-fill{height:100%;border-radius:2px;background:#E8500A;transition:width .4s ease}
 
   /* Dispositivos */
-  .dlist{display:flex;flex-direction:column;gap:8px;margin-bottom:1.25rem}
-  .drow{display:flex;align-items:center;gap:12px;background:#141414;border:1px solid #222;border-radius:12px;padding:.875rem 1rem}
-  .dicon{width:36px;height:36px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-  .dicon svg{width:18px;height:18px;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;fill:none}
-  .dname{font-size:13px;font-weight:500;color:#ddd}
-  .dmuscle{font-size:11px;color:#555;margin-top:2px}
+  .dlist{display:flex;flex-direction:column;gap:8px}
+  .drow{display:flex;align-items:center;gap:12px;background:#fff;border:1px solid #e8e4dc;border-radius:12px;padding:.875rem 1rem}
+  .dicon{width:36px;height:36px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:#fff5f2}
+  .dicon svg{width:18px;height:18px;stroke:#E8500A;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;fill:none}
+  .dname{font-size:13px;font-weight:700;color:#1a1a1a}
+  .dmuscle{font-size:11px;color:#aaa;margin-top:1px}
   .dfreq{font-size:12px;color:#888;margin-top:3px}
   .dstatus{width:8px;height:8px;border-radius:50%;flex-shrink:0}
-  .active{background:#1D9E75;box-shadow:0 0 6px #1D9E7588}
-  .inactive{background:#333}
+  .active{background:#E8500A}
+  .inactive{background:#ddd}
 
-  .upd{font-size:11px;color:#444;text-align:right;margin-bottom:.5rem}
-  .footer{text-align:center;font-size:11px;color:#333;margin-top:2rem}
+  .upd{font-size:11px;color:#bbb;text-align:right;margin-top:.5rem}
+  .footer{text-align:center;font-size:11px;color:#bbb;margin-top:1.5rem}
 </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="logo">
-    <div class="logo-mark">
-      <svg viewBox="0 0 24 24"><path d="M3 12h4l3-9 4 18 3-9h4"/></svg>
-    </div>
-    <div>
-      <div class="logo-name">Gym<span>Tracker</span></div>
-      <div class="tagline">Saiba em tempo real como está sua academia</div>
-    </div>
-  </div>
 
+<div class="header">
+  <div class="header-logo">
+    <div class="header-dot"></div>
+    <div class="header-name">GymTracker</div>
+  </div>
+  <div class="header-live">Saiba como está sua academia</div>
+</div>
+
+<div class="wrap">
   <div id="main"></div>
   <div class="footer">GymTracker © 2026 · Atualizado automaticamente</div>
 </div>
 
 <script>
-const DEVICES = [
-  { id:'device_001', name:'Leg Press', muscle:'Perna',
-    color:'#5DCAA5', iconPath:'M12 5v14M5 12l7-7 7 7' },
-  { id:'device_002', name:'Pulley', muscle:'Costas',
-    color:'#378ADD', iconPath:'M12 19V5M5 12l7 7 7-7' },
-  { id:'device_003', name:'Supino Vertical', muscle:'Peito',
-    color:'#D85A30', iconPath:'M5 12h14M12 5l7 7-7 7' },
+const DEVICES=[
+  {id:'device_001',name:'Leg Press',muscle:'Perna',
+   iconPath:'M12 5v14M5 12l7-7 7 7'},
+  {id:'device_002',name:'Pulley',muscle:'Costas',
+   iconPath:'M12 19V5M5 12l7 7 7-7'},
+  {id:'device_003',name:'Supino Vertical',muscle:'Peito',
+   iconPath:'M5 12h14M12 5l7 7-7 7'},
 ];
-
-const FERIADOS = ['01-01','21-04','01-05','07-09','12-10','02-11','15-11','25-12','20-11','20-04'];
-const HOR = {
+const FERIADOS=['01-01','21-04','01-05','07-09','12-10','02-11','15-11','25-12','20-11','20-04'];
+const HOR={
   0:{open:false},
   1:{p:[[6,12],[13,23]]},2:{p:[[6,12],[13,23]]},3:{p:[[6,12],[13,23]]},
   4:{p:[[6,12],[13,23]]},5:{p:[[6,12],[13,23]]},6:{p:[[8,12]]}
 };
 
 function isAberto(d){
-  const k = `${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-  if(FERIADOS.includes(k)) return false;
-  const dia = HOR[d.getDay()];
-  if(!dia||!dia.p) return false;
-  const h = d.getHours() + d.getMinutes()/60;
+  const k=`${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  if(FERIADOS.includes(k))return false;
+  const dia=HOR[d.getDay()];
+  if(!dia||!dia.p)return false;
+  const h=d.getHours()+d.getMinutes()/60;
   return dia.p.some(([s,e])=>h>=s&&h<e);
 }
 
 function proxHorario(d){
   const nomes=['domingo','segunda','terça','quarta','quinta','sexta','sábado'];
-  const h = d.getHours() + d.getMinutes()/60;
-  const dia = HOR[d.getDay()];
-  if(dia&&dia.p){ for(const[s,e] of dia.p){ if(h<s) return `Abre hoje às ${s}h`; } }
+  const h=d.getHours()+d.getMinutes()/60;
+  const dia=HOR[d.getDay()];
+  if(dia&&dia.p){for(const[s,e]of dia.p){if(h<s)return`Abre hoje às ${s}h`;}}
   for(let i=1;i<=7;i++){
     const idx=(d.getDay()+i)%7;
     const prox=HOR[idx];
     if(prox&&prox.p&&prox.p.length){
-      return `Abre ${i===1?'amanhã':nomes[idx]} às ${prox.p[0][0]}h`;
+      return`Abre ${i===1?'amanhã':nomes[idx]} às ${prox.p[0][0]}h`;
     }
   }
-  return '';
+  return'';
 }
 
 function lotacao(s15){
-  const t = s15.reduce((a,b)=>a+b,0);
-  if(t===0) return {label:'Academia vazia',sub:'Nenhum aparelho em uso agora',color:'#1D9E75',fig:'empty'};
-  if(t<=2)  return {label:'Movimento leve',sub:'Poucos aparelhos em uso',color:'#EF9F27',fig:'low'};
-  return           {label:'Academia movimentada',sub:'Vários aparelhos em uso',color:'#D85A30',fig:'busy'};
+  const t=s15.reduce((a,b)=>a+b,0);
+  if(t===0)return{label:'Academia vazia',sub:'Nenhum aparelho em uso agora',color:'#aaa',fig:'empty'};
+  if(t<=2) return{label:'Movimento leve',sub:'Poucos aparelhos em uso',color:'#E8A20A',fig:'low'};
+  return        {label:'Academia movimentada',sub:'Vários aparelhos em uso',color:'#E8500A',fig:'busy'};
 }
 
 function figSVG(type){
-  const c = type==='empty'?'#1D9E75':type==='low'?'#EF9F27':'#D85A30';
-  const op = type==='empty'?.25:.7;
+  const c=type==='empty'?'#ddd':type==='low'?'#E8A20A':'#E8500A';
   function pessoa(x,y,o){
-    return `<circle cx="${x}" cy="${y-20}" r="5" fill="${c}" opacity="${o}"/>
+    return`<circle cx="${x}" cy="${y-20}" r="5" fill="${c}" opacity="${o}"/>
     <rect x="${x-4}" y="${y-15}" width="8" height="12" rx="3" fill="${c}" opacity="${o}"/>
     <line x1="${x-7}" y1="${y-12}" x2="${x-4}" y2="${y-10}" stroke="${c}" stroke-width="1.5" stroke-linecap="round" opacity="${o}"/>
     <line x1="${x+7}" y1="${y-12}" x2="${x+4}" y2="${y-10}" stroke="${c}" stroke-width="1.5" stroke-linecap="round" opacity="${o}"/>
@@ -137,31 +131,29 @@ function figSVG(type){
   }
   let bodies='';
   if(type==='empty'){
-    bodies=`<circle cx="44" cy="28" r="9" fill="${c}" opacity=".12"/>
-    <line x1="38" y1="28" x2="50" y2="28" stroke="${c}" stroke-width="2" stroke-linecap="round" opacity=".3"/>`;
-  } else if(type==='low'){
-    bodies=pessoa(44,44,.85);
-  } else {
-    bodies=pessoa(22,44,.6)+pessoa(44,44,1)+pessoa(66,44,.7);
+    bodies=`<circle cx="44" cy="28" r="9" fill="${c}"/>
+    <line x1="38" y1="28" x2="50" y2="28" stroke="#fff" stroke-width="2" stroke-linecap="round"/>`;
+  }else if(type==='low'){
+    bodies=pessoa(44,44,.9);
+  }else{
+    bodies=pessoa(22,44,.6)+pessoa(44,44,1)+pessoa(66,44,.75);
   }
-  return `<svg width="88" height="64" viewBox="0 0 88 64" aria-hidden="true">${bodies}</svg>`;
+  return`<svg width="88" height="64" viewBox="0 0 88 64" aria-hidden="true">${bodies}</svg>`;
 }
 
 function render(sessoes){
-  const agora = new Date();
-  const aberto = isAberto(agora);
-  const now = agora.getTime();
-  const t15 = 15*60*1000, t60 = 60*60*1000;
-
-  const s15 = DEVICES.map(d=>sessoes.filter(s=>s.device_id===d.id&&(now-new Date(s.inicio).getTime())<t15).length);
-  const s60 = DEVICES.map(d=>sessoes.filter(s=>s.device_id===d.id&&(now-new Date(s.inicio).getTime())<t60).length);
-  const maxS = Math.max(...s60,1);
-
-  const muscleData = DEVICES.map((d,i)=>({name:d.muscle,count:s60[i],pct:Math.round(s60[i]/maxS*100)}))
+  const agora=new Date();
+  const aberto=isAberto(agora);
+  const now=agora.getTime();
+  const t15=15*60*1000,t60=60*60*1000;
+  const s15=DEVICES.map(d=>sessoes.filter(s=>s.device_id===d.id&&(now-new Date(s.inicio).getTime())<t15).length);
+  const s60=DEVICES.map(d=>sessoes.filter(s=>s.device_id===d.id&&(now-new Date(s.inicio).getTime())<t60).length);
+  const maxS=Math.max(...s60,1);
+  const muscleData=DEVICES.map((d,i)=>({name:d.muscle,count:s60[i],pct:Math.round(s60[i]/maxS*100)}))
     .sort((a,b)=>b.count-a.count);
   const ranks=['🥇','🥈','🥉'];
-  const st = lotacao(s15);
-  const hora = agora.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  const st=lotacao(s15);
+  const hora=agora.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
 
   let h='';
 
@@ -171,12 +163,12 @@ function render(sessoes){
       <div class="closed-title">Academia fechada</div>
       <div class="closed-sub">${proxHorario(agora)}</div>
     </div>`;
-  } else {
-    h+=`<div class="status-card">
-      <div class="status-label">Status agora · últimos 15 min</div>
+  }else{
+    h+=`<div class="card">
+      <div class="sec">Status agora · últimos 15 min</div>
       <div class="status-body">
-        <div class="status-figure">${figSVG(st.fig)}</div>
-        <div class="status-text">
+        <div>${figSVG(st.fig)}</div>
+        <div>
           <div class="status-title"><span class="dot" style="background:${st.color}"></span>${st.label}</div>
           <div class="status-sub">${st.sub}</div>
         </div>
@@ -186,24 +178,21 @@ function render(sessoes){
 
   h+=`<div class="sec">Músculo mais treinado · última hora</div>
   <div class="muscles">
-  ${muscleData.map((m,i)=>`
-    <div class="mc">
-      <div class="mc-rank">${ranks[i]}</div>
-      <div class="mc-name">${m.name}</div>
-      <div class="mc-count">${m.count} uso${m.count!==1?'s':''}</div>
-      <div class="mc-bar"><div class="mc-fill" style="width:${m.pct}%"></div></div>
-    </div>`).join('')}
+  ${muscleData.map((m,i)=>`<div class="mc">
+    <div class="mc-rank">${ranks[i]}</div>
+    <div class="mc-name">${m.name}</div>
+    <div class="mc-count">${m.count} uso${m.count!==1?'s':''}</div>
+    <div class="mc-bar"><div class="mc-fill" style="width:${m.pct}%"></div></div>
+  </div>`).join('')}
   </div>`;
 
   h+=`<div class="sec">Frequência de uso · última hora</div><div class="dlist">`;
   DEVICES.forEach((d,i)=>{
     const c=s60[i];
-    const freq = c>0 ? `Usado a cada ~${Math.round(60/c)} min` : 'Sem uso registrado';
-    const ativo = s15[i]>0;
+    const freq=c>0?`Usado a cada ~${Math.round(60/c)} min`:'Sem uso registrado';
+    const ativo=s15[i]>0;
     h+=`<div class="drow">
-      <div class="dicon" style="background:${d.color}1a">
-        <svg viewBox="0 0 24 24" style="stroke:${d.color}"><path d="${d.iconPath}"/></svg>
-      </div>
+      <div class="dicon"><svg viewBox="0 0 24 24"><path d="${d.iconPath}"/></svg></div>
       <div style="flex:1;min-width:0">
         <div class="dname">${d.name}</div>
         <div class="dmuscle">${d.muscle}</div>
@@ -212,19 +201,18 @@ function render(sessoes){
       <div class="dstatus ${ativo?'active':'inactive'}"></div>
     </div>`;
   });
-  h+=`</div>`;
-  h+=`<div class="upd">Atualizado às ${hora}</div>`;
+  h+=`</div><div class="upd">Atualizado às ${hora}</div>`;
 
   document.getElementById('main').innerHTML=h;
 }
 
 async function go(){
   try{
-    const r = await fetch('https://gymtracker-api-production-bc16.up.railway.app/sessao');
-    const data = await r.json();
+    const r=await fetch('https://gymtracker-api-production-bc16.up.railway.app/status');
+    const data=await r.json();
     render(Array.isArray(data)?data:(data.sessoes||[]));
-  } catch(e){
-    const mock=[], n=Date.now();
+  }catch(e){
+    const mock=[],n=Date.now();
     mock.push({device_id:'device_002',inicio:new Date(n-4*60000).toISOString()});
     mock.push({device_id:'device_002',inicio:new Date(n-9*60000).toISOString()});
     mock.push({device_id:'device_003',inicio:new Date(n-20*60000).toISOString()});
@@ -233,9 +221,7 @@ async function go(){
     render(mock);
   }
 }
-
-go();
-setInterval(go,30000);
+go();setInterval(go,30000);
 </script>
 </body>
 </html>
