@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GymTracker — Diagnóstico</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      min-height: 100vh;
+      padding: 24px 16px;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+    header a {
+      color: #64748b;
+      text-decoration: none;
+      font-size: 0.85rem;
+      border: 1px solid #334155;
+      padding: 4px 10px;
+      border-radius: 6px;
+    }
+    header a:hover { color: #cbd5e1; }
+    h1 { font-size: 1.25rem; font-weight: 600; }
+    .subtitle { color: #64748b; font-size: 0.8rem; margin-top: 2px; }
+    #refresh-info { margin-left: auto; font-size: 0.75rem; color: #475569; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 16px;
+    }
+
+    .card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 20px;
+    }
+    .card.alerta { border-color: #ef4444; }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+    .device-name { font-size: 1rem; font-weight: 600; }
+    .device-id   { font-size: 0.72rem; color: #64748b; margin-top: 2px; }
+    .last-seen   { font-size: 0.72rem; color: #64748b; text-align: right; }
+    .last-seen.stale { color: #ef4444; }
+
+    .metrics { display: flex; flex-direction: column; gap: 14px; }
+
+    .metric-label {
+      font-size: 0.72rem;
+      color: #94a3b8;
+      margin-bottom: 5px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .bat-bar-bg {
+      height: 8px;
+      background: #334155;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+    .bat-bar-fill {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 0.5s ease;
+    }
+    .bat-value {
+      font-size: 0.82rem;
+      font-weight: 600;
+      margin-top: 5px;
+    }
+
+    .rssi-bars {
+      display: flex;
+      align-items: flex-end;
+      gap: 3px;
+      height: 24px;
+    }
+    .rssi-bar {
+      width: 8px;
+      border-radius: 2px;
+      background: #334155;
+    }
+
+    .rssi-value { font-size: 0.82rem; font-weight: 600; margin-left: 8px; }
+
+    .row-metric {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.82rem;
+    }
+    .row-metric .val { font-weight: 600; }
+
+    .warn   { color: #f59e0b; }
+    .danger { color: #ef4444; }
+    .ok     { color: #22c55e; }
+
+    .no-data {
+      font-size: 0.78rem;
+      color: #475569;
+      padding: 4px 0;
+    }
+
+    .temp-note {
+      font-size: 0.65rem;
+      color: #475569;
+      margin-top: 3px;
+    }
+
+    .divider {
+      height: 1px;
+      background: #1e293b;
+      border-top: 1px solid #334155;
+      margin: 2px 0;
+    }
+
+    #loading { text-align: center; color: #64748b; padding: 48px; }
+    #error   { color: #ef4444; text-align: center; padding: 48px; display: none; }
+  </style>
+</head>
+<body>
+
+<header>
+  <a href="/">← Dashboard</a>
+  <div>
+    <h1>🔧 Diagnóstico de Dispositivos</h1>
+    <div class="subtitle">Dados da última sessão transmitida por cada device</div>
+  </div>
+  <div id="refresh-info">Atualizando...</div>
+</header>
+
+<div id="loading">Carregando...</div>
+<div id="error"></div>
+<div class="grid" id="grid" style="display:none"></div>
+
+<script>
+const API = 'https://gymtracker-api-production-bc16.up.railway.app';
+
+const DEVICE_NAMES = {
+  device_001: 'Leg Press',
+  device_002: 'Pulley',
+  device_003: 'Peck Deck',
+  device_004: 'Protótipo',
+};
+
+// ─── Helpers ────────────────────────────────────────────────
+
+function parseBRT(str) {
+  if (!str) return null;
+  return new Date(str + '-03:00');
+}
+
+function tempoDesde(str) {
+  const d = parseBRT(str);
+  if (!d) return '—';
+  const diff = Math.floor((Date.now() - d) / 1000);
+  if (diff < 60)   return `${diff}s atrás`;
+  if (diff < 3600) return `${Math.floor(diff / 60)}min atrás`;
+  return `${Math.floor(diff / 3600)}h ${Math.floor((diff % 3600) / 60)}min atrás`;
+}
+
+function isStale(str, limitMin = 120) {
+  const d = parseBRT(str);
+  if (!d) return false;
+  return (Date.now() - d) / 60000 > limitMin;
+}
+
+function batCor(pct) {
+  if (pct === null || pct === undefined) return '#475569';
+  if (pct > 50) return '#22c55e';
+  if (pct > 20) return '#f59e0b';
+  return '#ef4444';
+}
+
+function rssiQualidade(rssi) {
+  if (rssi === null || rssi === undefined) return { label: '—', cls: '' };
+  if (rssi >= -55) return { label: 'Excelente', cls: 'ok' };
+  if (rssi >= -70) return { label: 'Bom',       cls: 'ok' };
+  if (rssi >= -80) return { label: 'Fraco',     cls: 'warn' };
+  return               { label: 'Crítico',   cls: 'danger' };
+}
+
+function rssiBarras(rssi) {
+  // 4 barras — cada uma representa um degrau de sinal
+  const degraus = [
+    { min: -90, h: 6  },
+    { min: -80, h: 11 },
+    { min: -70, h: 16 },
+    { min: -55, h: 21 },
+  ];
+  return degraus.map(({ min, h }) => {
+    const ativo = rssi !== null && rssi !== undefined && rssi >= min;
+    let cor = '#334155';
+    if (ativo) {
+      cor = rssi >= -70 ? '#22c55e' : rssi >= -80 ? '#f59e0b' : '#ef4444';
+    }
+    return `<div class="rssi-bar" style="height:${h}px; background:${cor}"></div>`;
+  }).join('');
+}
+
+function tempCls(t) {
+  if (t === null || t === undefined) return '';
+  if (t > 80) return 'danger';
+  if (t > 65) return 'warn';
+  return 'ok';
+}
+
+function na(val, sufixo = '') {
+  return (val !== null && val !== undefined) ? `${val}${sufixo}` : '—';
+}
+
+// ─── Card ───────────────────────────────────────────────────
+
+function renderCard(d) {
+  const nome   = DEVICE_NAMES[d.device_id] || d.device_id;
+  const stale  = isStale(d.ultimo_contato, 120);
+  const batBaixa = d.bat_pct !== null && d.bat_pct !== undefined && d.bat_pct <= 15;
+  const alertaCard = stale || batBaixa;
+  const { label: rssiLabel, cls: rssiCls } = rssiQualidade(d.rssi);
+
+  const wsmCls  = d.wakes_sem_mov > 50  ? 'warn'   : '';
+  const bufCls  = d.buffer_fill   > 18  ? 'danger' : d.buffer_fill > 10 ? 'warn' : '';
+
+  return `
+    <div class="card ${alertaCard ? 'alerta' : ''}">
+
+      <div class="card-header">
+        <div>
+          <div class="device-name">${nome}</div>
+          <div class="device-id">${d.device_id}</div>
+        </div>
+        <div class="last-seen ${stale ? 'stale' : ''}">
+          ${stale ? '⚠️ ' : ''}${tempoDesde(d.ultimo_contato)}
+        </div>
+      </div>
+
+      <div class="metrics">
+
+        <!-- Bateria -->
+        <div>
+          <div class="metric-label">🔋 Bateria</div>
+          ${d.bat_pct !== null && d.bat_pct !== undefined ? `
+            <div class="bat-bar-bg">
+              <div class="bat-bar-fill"
+                   style="width:${d.bat_pct}%; background:${batCor(d.bat_pct)}">
+              </div>
+            </div>
+            <div class="bat-value" style="color:${batCor(d.bat_pct)}">${d.bat_pct}%</div>
+          ` : '<div class="no-data">sem dados</div>'}
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- RSSI -->
+        <div>
+          <div class="metric-label">📶 Sinal WiFi</div>
+          <div style="display:flex; align-items:center; gap:8px">
+            <div class="rssi-bars">${rssiBarras(d.rssi)}</div>
+            ${d.rssi !== null && d.rssi !== undefined ? `
+              <span class="rssi-value ${rssiCls}">${d.rssi} dBm</span>
+              <span style="font-size:0.78rem; color:#64748b">${rssiLabel}</span>
+            ` : '<span class="rssi-value" style="color:#475569">sem dados</span>'}
+          </div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Temperatura interna -->
+        <div>
+          <div class="metric-label">🌡️ Temperatura Interna (chip)</div>
+          <div class="row-metric">
+            <span class="val ${tempCls(d.temp_c)}">${na(d.temp_c, ' °C')}</span>
+            ${d.temp_c > 80 ? '<span class="danger">⚠️ Superaquecimento</span>'
+              : d.temp_c > 65 ? '<span class="warn">Elevada</span>'
+              : d.temp_c !== null ? '<span class="ok">Normal</span>' : ''}
+          </div>
+          <div class="temp-note">Temperatura interna do ESP32 — não representa o ambiente</div>
+        </div>
+
+        <div class="divider"></div>
+
+        <!-- Wakes sem movimento -->
+        <div class="row-metric">
+          <span>Wakes sem movimento</span>
+          <span class="val ${wsmCls}">${na(d.wakes_sem_mov)}</span>
+        </div>
+
+        <!-- Buffer -->
+        <div class="row-metric">
+          <span>Buffer (sessões pendentes)</span>
+          <span class="val ${bufCls}">${na(d.buffer_fill, ' / 20')}</span>
+        </div>
+
+      </div>
+    </div>
+  `;
+}
+
+// ─── Fetch ──────────────────────────────────────────────────
+
+async function carregar() {
+  try {
+    const ctrl = new AbortController();
+    const tid  = setTimeout(() => ctrl.abort(), 10000);
+    const res  = await fetch(`${API}/dispositivos/status`, { signal: ctrl.signal });
+    clearTimeout(tid);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('error').style.display   = 'none';
+    const grid = document.getElementById('grid');
+    grid.style.display = 'grid';
+    grid.innerHTML = data.length
+      ? data.map(renderCard).join('')
+      : '<p style="color:#475569; grid-column:1/-1; text-align:center">Nenhum device encontrado.</p>';
+
+    const agora = new Date().toLocaleTimeString('pt-BR');
+    document.getElementById('refresh-info').textContent = `Atualizado às ${agora}`;
+  } catch (e) {
+    document.getElementById('loading').style.display = 'none';
+    const el = document.getElementById('error');
+    el.style.display = 'block';
+    el.textContent   = `Erro ao carregar: ${e.message}`;
+  }
+}
+
+carregar();
+setInterval(carregar, 30000);
+</script>
+
+</body>
+</html>
