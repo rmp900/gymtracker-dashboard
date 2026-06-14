@@ -19,6 +19,7 @@ const WHITE = "#ffffff";
 const DARK = "#1c1917";
 const MID = "#78716c";
 const BORDER = "#e7e5e4";
+const PRODUCTION_DEVICES = ['device_001', 'device_002', 'device_003'];
 
 function parseSession(s) {
   const deviceId = s.device_id || s.deviceId || s.device || "";
@@ -97,21 +98,6 @@ function fmtDataHora(d) {
   return `${d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" })} ${fmtHora(d)}`;
 }
 
-// ── Indicador de bateria ──────────────────────────────────────────────────────
-function BatIcon({ pct }) {
-  if (pct === null || pct === undefined) return null;
-  const cor = pct > 50 ? "#16a34a" : pct > 20 ? "#d97706" : "#dc2626";
-  const emoji = pct > 50 ? "🔋" : pct > 20 ? "🪫" : "⚠️";
-  return (
-    <span
-      title={`Bateria: ${pct}%`}
-      style={{ fontSize: 11, color: cor, marginLeft: 6, fontWeight: 600, whiteSpace: "nowrap" }}
-    >
-      {emoji} {pct}%
-    </span>
-  );
-}
-
 const CustomTooltip = ({ active, payload }) => {
   if (!active || !payload?.length) return null;
   return (
@@ -152,8 +138,6 @@ export default function GymTracker() {
   const [error, setError] = useState(null);
   const [lastUpdate, setLastUpdate] = useState(null);
   const [corsError, setCorsError] = useState(false);
-  // Estado de diagnóstico por device — indexado por device_id
-  const [dispositivosStatus, setDispositivosStatus] = useState({});
 
   const fetchData = useCallback(async () => {
     try {
@@ -161,7 +145,9 @@ export default function GymTracker() {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       const raw = Array.isArray(data) ? data : data.sessoes || data.data || [];
-      setSessions(raw.map(parseSession));
+      const parsed = raw.map(parseSession);
+      // Filtra apenas dispositivos de produção — device_004 (protótipo) vai só para diagnostico.html
+      setSessions(parsed.filter(s => PRODUCTION_DEVICES.includes(s.deviceId)));
       setError(null);
       setCorsError(false);
       setLastUpdate(new Date());
@@ -176,29 +162,11 @@ export default function GymTracker() {
     }
   }, []);
 
-  // Fetch de diagnóstico — separado, atualiza a cada 60s
-  const fetchDiagnostico = useCallback(async () => {
-    try {
-      const res = await fetch(`${API_BASE}/dispositivos/status`);
-      if (!res.ok) return;
-      const data = await res.json();
-      const idx = {};
-      data.forEach(d => { idx[d.device_id] = d; });
-      setDispositivosStatus(idx);
-    } catch (_) {}
-  }, []);
-
   useEffect(() => {
     fetchData();
     const t = setInterval(fetchData, 30000);
     return () => clearInterval(t);
   }, [fetchData]);
-
-  useEffect(() => {
-    fetchDiagnostico();
-    const t = setInterval(fetchDiagnostico, 60000);
-    return () => clearInterval(t);
-  }, [fetchDiagnostico]);
 
   const stats = computeStats(sessions);
   const now = new Date();
@@ -232,29 +200,15 @@ export default function GymTracker() {
           GYMTRACKER
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          {/* Link para diagnóstico */}
-          <a
-            href="/diagnostico.html"
-            style={{
-              fontSize: 11, fontWeight: 600, color: "rgba(255,255,255,0.75)",
-              textDecoration: "none", border: "1px solid rgba(255,255,255,0.3)",
-              borderRadius: 6, padding: "3px 10px", whiteSpace: "nowrap",
-            }}
-          >
-            🔧 Diagnóstico
-          </a>
-
-          <div style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(255,255,255,0.18)", borderRadius: 20, padding: "4px 12px", whiteSpace: "nowrap", flexShrink: 0 }}>
-            <div style={{
-              width: 7, height: 7, borderRadius: "50%", background: WHITE, flexShrink: 0,
-              animation: error || corsError ? "none" : "fadeUp 1s infinite alternate",
-              opacity: error || corsError ? 0.4 : 1,
-            }} />
-            <span style={{ fontSize: 12, fontWeight: 600, color: WHITE }}>
-              {error || corsError ? "OFFLINE" : loading ? "CONECTANDO" : "AO VIVO"}
-            </span>
-          </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(255,255,255,0.18)", borderRadius: 20, padding: "4px 12px", whiteSpace: "nowrap", flexShrink: 0 }}>
+          <div style={{
+            width: 7, height: 7, borderRadius: "50%", background: WHITE, flexShrink: 0,
+            animation: error || corsError ? "none" : "fadeUp 1s infinite alternate",
+            opacity: error || corsError ? 0.4 : 1,
+          }} />
+          <span style={{ fontSize: 12, fontWeight: 600, color: WHITE }}>
+            {error || corsError ? "OFFLINE" : loading ? "CONECTANDO" : "AO VIVO"}
+          </span>
         </div>
       </header>
 
@@ -375,51 +329,44 @@ export default function GymTracker() {
               <div style={{ color: MID, fontSize: 13, textAlign: "center", paddingTop: 40 }}>Sem sessões hoje</div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                {stats.ranking.map((item, i) => {
-                  // Encontra o device_id pelo nome para buscar bateria
-                  const devId = Object.keys(DEVICE_NAMES).find(k => DEVICE_NAMES[k] === item.name);
-                  const batPct = devId ? dispositivosStatus[devId]?.bat_pct : undefined;
-                  return (
-                    <div key={item.name}>
-                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <div style={{
-                            width: 22, height: 22, borderRadius: 4,
-                            background: i === 0 ? O : OL,
-                            color: i === 0 ? WHITE : OD,
-                            display: "flex", alignItems: "center", justifyContent: "center",
-                            fontFamily: "'Barlow Condensed', sans-serif",
-                            fontSize: 12, fontWeight: 700,
-                          }}>
-                            {i + 1}
-                          </div>
-                          <span style={{ fontSize: 14, fontWeight: 500, color: DARK }}>{item.name}</span>
-                          {/* ── Indicador de bateria ── */}
-                          <BatIcon pct={batPct} />
-                        </div>
-                        <span style={{
+                {stats.ranking.map((item, i) => (
+                  <div key={item.name}>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <div style={{
+                          width: 22, height: 22, borderRadius: 4,
+                          background: i === 0 ? O : OL,
+                          color: i === 0 ? WHITE : OD,
+                          display: "flex", alignItems: "center", justifyContent: "center",
                           fontFamily: "'Barlow Condensed', sans-serif",
-                          fontSize: 18, fontWeight: 700, color: i === 0 ? O : DARK,
+                          fontSize: 12, fontWeight: 700,
                         }}>
-                          {item.count}
-                        </span>
+                          {i + 1}
+                        </div>
+                        <span style={{ fontSize: 14, fontWeight: 500, color: DARK }}>{item.name}</span>
                       </div>
-                      <div style={{ background: OL, borderRadius: 20, height: 8, overflow: "hidden" }}>
-                        <div
-                          className="rank-bar-fill"
-                          style={{
-                            "--w": `${Math.round((item.count / stats.maxRank) * 100)}%`,
-                            width: `${Math.round((item.count / stats.maxRank) * 100)}%`,
-                            height: "100%",
-                            background: i === 0 ? O : "#fdba74",
-                            borderRadius: 20,
-                            animationDelay: `${i * 0.1 + 0.2}s`,
-                          }}
-                        />
-                      </div>
+                      <span style={{
+                        fontFamily: "'Barlow Condensed', sans-serif",
+                        fontSize: 18, fontWeight: 700, color: i === 0 ? O : DARK,
+                      }}>
+                        {item.count}
+                      </span>
                     </div>
-                  );
-                })}
+                    <div style={{ background: OL, borderRadius: 20, height: 8, overflow: "hidden" }}>
+                      <div
+                        className="rank-bar-fill"
+                        style={{
+                          "--w": `${Math.round((item.count / stats.maxRank) * 100)}%`,
+                          width: `${Math.round((item.count / stats.maxRank) * 100)}%`,
+                          height: "100%",
+                          background: i === 0 ? O : "#fdba74",
+                          borderRadius: 20,
+                          animationDelay: `${i * 0.1 + 0.2}s`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>
@@ -478,41 +425,36 @@ export default function GymTracker() {
                 </tr>
               </thead>
               <tbody>
-                {stats.ultimas.map((s, i) => {
-                  const batPct = dispositivosStatus[s.deviceId]?.bat_pct;
-                  return (
-                    <tr key={s.id || i}>
-                      <td style={{ padding: "12px 22px", borderBottom: `1px solid ${BORDER}` }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <div style={{
-                            width: 8, height: 8, borderRadius: "50%", background: O, flexShrink: 0,
-                          }} />
-                          <span style={{ fontSize: 14, fontWeight: 500, color: DARK }}>{s.deviceName}</span>
-                          {/* ── Indicador de bateria na tabela ── */}
-                          <BatIcon pct={batPct} />
-                        </div>
-                      </td>
-                      <td style={{ padding: "12px 22px", fontSize: 13, color: DARK, borderBottom: `1px solid ${BORDER}` }}>
-                        {fmtDataHora(s.start)}
-                      </td>
-                      <td style={{ padding: "12px 22px", fontSize: 13, color: MID, borderBottom: `1px solid ${BORDER}` }}>
-                        {s.end ? fmtDataHora(s.end) : <span style={{ color: O, fontWeight: 500 }}>Em uso</span>}
-                      </td>
-                      <td style={{ padding: "12px 22px", borderBottom: `1px solid ${BORDER}` }}>
-                        <span style={{
-                          fontFamily: "'Barlow Condensed', sans-serif",
-                          fontSize: 15, fontWeight: 600,
-                          color: s.duracao ? DARK : O,
-                        }}>
-                          {fmtDur(s.duracao)}
-                        </span>
-                      </td>
-                      <td style={{ padding: "12px 22px", fontSize: 12, color: MID, fontFamily: "monospace", borderBottom: `1px solid ${BORDER}` }}>
-                        {s.deviceId || "—"}
-                      </td>
-                    </tr>
-                  );
-                })}
+                {stats.ultimas.map((s, i) => (
+                  <tr key={s.id || i}>
+                    <td style={{ padding: "12px 22px", borderBottom: `1px solid ${BORDER}` }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <div style={{
+                          width: 8, height: 8, borderRadius: "50%", background: O, flexShrink: 0,
+                        }} />
+                        <span style={{ fontSize: 14, fontWeight: 500, color: DARK }}>{s.deviceName}</span>
+                      </div>
+                    </td>
+                    <td style={{ padding: "12px 22px", fontSize: 13, color: DARK, borderBottom: `1px solid ${BORDER}` }}>
+                      {fmtDataHora(s.start)}
+                    </td>
+                    <td style={{ padding: "12px 22px", fontSize: 13, color: MID, borderBottom: `1px solid ${BORDER}` }}>
+                      {s.end ? fmtDataHora(s.end) : <span style={{ color: O, fontWeight: 500 }}>Em uso</span>}
+                    </td>
+                    <td style={{ padding: "12px 22px", borderBottom: `1px solid ${BORDER}` }}>
+                      <span style={{
+                        fontFamily: "'Barlow Condensed', sans-serif",
+                        fontSize: 15, fontWeight: 600,
+                        color: s.duracao ? DARK : O,
+                      }}>
+                        {fmtDur(s.duracao)}
+                      </span>
+                    </td>
+                    <td style={{ padding: "12px 22px", fontSize: 12, color: MID, fontFamily: "monospace", borderBottom: `1px solid ${BORDER}` }}>
+                      {s.deviceId || "—"}
+                    </td>
+                  </tr>
+                ))}
               </tbody>
             </table>
           )}
