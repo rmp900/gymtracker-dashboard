@@ -163,10 +163,9 @@ const CustomTooltip = ({ active, payload }) => {
 function StatCard({ label, value, sub, alert }) {
   return (
     <div style={{
-      background: WHITE, borderRadius: 12, padding: "20px 22px",
+      background: alert ? "#fff1f2" : WHITE, borderRadius: 12, padding: "20px 22px",
       border: `1px solid ${alert ? "#fca5a5" : BORDER}`,
       flex: 1, minWidth: 140,
-      background: alert ? "#fff1f2" : WHITE,
     }}>
       <div style={{ fontSize: 12, fontWeight: 600, color: alert ? "#dc2626" : O, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 8 }}>
         {label}
@@ -233,7 +232,7 @@ export default function GymTracker() {
   const [anomalas,           setAnomalas]           = useState([]);
   const [dupCount,           setDupCount]           = useState(0);
   const [loading,            setLoading]            = useState(true);
-  const [error,              setError]              = useState(null);
+  const [_error,             setError]              = useState(null); // eslint-disable-line no-unused-vars
   const [lastUpdate,         setLastUpdate]         = useState(null);
   const [corsError,          setCorsError]          = useState(false);
   const [dispositivosStatus, setDispositivosStatus] = useState({});
