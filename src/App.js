@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell,
+  PieChart, Pie
 } from "recharts";
 
 const API_BASE = "https://gymtracker-api-production-bc16.up.railway.app";
@@ -9,6 +10,12 @@ const DEVICE_NAMES = {
   device_001: "Leg Press",
   device_002: "Pulley",
   device_003: "Peck Deck",
+};
+
+const DEVICE_COLORS = {
+  device_001: "#5DCAA5",
+  device_002: "#378ADD",
+  device_003: "#D85A30",
 };
 
 const DEVICES_TESTE = new Set(["device_004"]);
@@ -51,6 +58,20 @@ function parseSession(s) {
     end:        end   ? new Date(end   + (end.includes("+")   || end.endsWith("Z")   ? "" : "-03:00")) : null,
     duracao:    duracao ? Math.round(Number(duracao)) : null,
   };
+}
+
+// Calcula distribuição por device para donut
+function calcDonut(sessions) {
+  const map = {};
+  sessions.forEach(s => {
+    if (!DEVICES_TESTE.has(s.deviceId))
+      map[s.deviceId] = (map[s.deviceId] || 0) + 1;
+  });
+  return Object.entries(map).map(([id, value]) => ({
+    id, value,
+    name: DEVICE_NAMES[id] || id,
+    color: DEVICE_COLORS[id] || "#ccc",
+  }));
 }
 
 // Remove duplicatas: mesmo device + mesmo início (tolerância 2s) + mesma duração
@@ -179,6 +200,66 @@ function StatCard({ label, value, sub, alert }) {
   );
 }
 
+function DonutCard({ title, data, total }) {
+  const isEmpty = !data || data.length === 0 || total === 0;
+  const chartData = isEmpty
+    ? [{ name: "vazio", value: 1, color: "#e7e5e4" }]
+    : data;
+
+  return (
+    <div style={{
+      background: WHITE, borderRadius: 12, border: `1px solid ${BORDER}`,
+      padding: "20px 16px", flex: "1 1 200px", textAlign: "center",
+    }}>
+      <div style={{ fontSize: 11, fontWeight: 700, color: O, textTransform: "uppercase", letterSpacing: "0.09em", marginBottom: 12 }}>
+        {title}
+      </div>
+      <div style={{ position: "relative", display: "inline-block" }}>
+        <PieChart width={140} height={140}>
+          <Pie
+            data={chartData}
+            cx={65} cy={65}
+            innerRadius={44} outerRadius={62}
+            dataKey="value"
+            strokeWidth={0}
+          >
+            {chartData.map((entry, i) => (
+              <Cell key={i} fill={entry.color} />
+            ))}
+          </Pie>
+        </PieChart>
+        <div style={{
+          position: "absolute", top: "50%", left: "50%",
+          transform: "translate(-50%, -50%)",
+          textAlign: "center", lineHeight: 1.2,
+        }}>
+          <div style={{ fontFamily: "'Barlow Condensed', sans-serif", fontSize: 26, fontWeight: 700, color: isEmpty ? MID : DARK }}>
+            {isEmpty ? 0 : total}
+          </div>
+          <div style={{ fontSize: 10, color: MID }}>sessões</div>
+        </div>
+      </div>
+      {isEmpty ? (
+        <div style={{ fontSize: 12, color: MID, marginTop: 8 }}>Sem dados</div>
+      ) : (
+        <div style={{ marginTop: 12, textAlign: "left", display: "flex", flexDirection: "column", gap: 5 }}>
+          {data.map(d => (
+            <div key={d.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 12 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <div style={{ width: 8, height: 8, borderRadius: "50%", background: d.color, flexShrink: 0 }} />
+                <span style={{ color: MID }}>{d.name}</span>
+              </div>
+              <span style={{ fontWeight: 600, color: DARK }}>
+                {Math.round((d.value / total) * 100)}%
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function DateSelector({ selectedDate, onChange }) {
   const canGoForward = !isToday(selectedDate);
   return (
@@ -239,6 +320,10 @@ export default function GymTracker() {
   const [dispositivosStatus, setDispositivosStatus] = useState({});
   const [selectedDate,       setSelectedDate]       = useState(new Date());
   const [showAnomalas,       setShowAnomalas]       = useState(false);
+  const [dados7dias,         setDados7dias]         = useState([]);
+  const [total7dias,         setTotal7dias]         = useState(0);
+  const [dados30dias,        setDados30dias]        = useState([]);
+  const [total30dias,        setTotal30dias]        = useState(0);
 
   const fetchData = useCallback(async (date) => {
     try {
@@ -269,6 +354,24 @@ export default function GymTracker() {
     }
   }, [selectedDate]);
 
+  const fetchPeriodo = useCallback(async (dias, setDados, setTotal) => {
+    try {
+      const fim   = new Date();
+      const inicio = new Date(); inicio.setDate(inicio.getDate() - dias);
+      const url = `${API_BASE}/sessoes/periodo?inicio=${toYMD(inicio)}&fim=${toYMD(fim)}`;
+      const res = await fetch(url);
+      if (!res.ok) return;
+      const raw  = await res.json();
+      const all  = (Array.isArray(raw) ? raw : raw.sessoes || [])
+        .map(parseSession)
+        .filter(s => !DEVICES_TESTE.has(s.deviceId));
+      const dedup = deduplicar(all);
+      const { normais } = particionarSessoes(dedup);
+      setDados(calcDonut(normais));
+      setTotal(normais.length);
+    } catch (_) {}
+  }, []);
+
   const fetchDiagnostico = useCallback(async () => {
     try {
       const res = await fetch(`${API_BASE}/dispositivos/status`);
@@ -296,6 +399,8 @@ export default function GymTracker() {
 
   useEffect(() => {
     fetchDiagnostico();
+    fetchPeriodo(7,  setDados7dias,  setTotal7dias);
+    fetchPeriodo(30, setDados30dias, setTotal30dias);
     const t = setInterval(fetchDiagnostico, 60000);
     return () => clearInterval(t);
   }, [fetchDiagnostico]);
@@ -537,6 +642,17 @@ export default function GymTracker() {
               </div>
             )}
           </div>
+        </div>
+
+        {/* ── Donuts ── */}
+        <div className="gt-row fade-up" style={{ marginBottom: 20, animationDelay: "0.24s" }}>
+          <DonutCard
+            title={isToday(selectedDate) ? "Hoje" : fmtDatePtBR(selectedDate)}
+            data={calcDonut(sessions)}
+            total={sessions.length}
+          />
+          <DonutCard title="Últimos 7 dias" data={dados7dias} total={total7dias} />
+          <DonutCard title="Últimos 30 dias" data={dados30dias} total={total30dias} />
         </div>
 
         {/* ── Tabela ── */}
