@@ -11,6 +11,7 @@ const DEVICE_NAMES = {
   device_003: "Peck Deck",
 };
 
+const DEVICES_TESTE = new Set(["device_004"]);
 const DURACAO_MAX_S  = 3600; // sessões > 1h são anomalia
 const O      = "#ea580c";
 const OL     = "#fff7ed";
@@ -246,7 +247,7 @@ export default function GymTracker() {
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       const raw = Array.isArray(data) ? data : data.sessoes || data.data || [];
-      const parsed = raw.map(parseSession);
+      const parsed = raw.map(parseSession).filter(s => !DEVICES_TESTE.has(s.deviceId));
 
       const semDup = deduplicar(parsed);
       setDupCount(parsed.length - semDup.length);
