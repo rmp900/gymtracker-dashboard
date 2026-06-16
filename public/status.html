@@ -8,24 +8,31 @@
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&display=swap');
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:'Inter',sans-serif;background:#f5f3ef;color:#1a1a1a;min-height:100vh}
+
   .header{background:#E8500A;padding:1rem 1.25rem .875rem;display:flex;align-items:center;justify-content:space-between}
-  .header-left{display:flex;align-items:center;gap:8px}
+  .header-logo{display:flex;align-items:center;gap:8px}
   .header-dot{width:10px;height:10px;border-radius:50%;background:#fff;opacity:.9}
   .header-name{font-size:16px;font-weight:800;color:#fff;letter-spacing:.5px;text-transform:uppercase}
   .header-live{font-size:11px;font-weight:500;color:#fff;opacity:.8}
-  .back-btn{font-size:12px;font-weight:600;color:rgba(255,255,255,0.85);text-decoration:none;background:rgba(255,255,255,0.18);padding:5px 12px;border-radius:8px;white-space:nowrap;transition:background .15s}
-  .back-btn:hover{background:rgba(255,255,255,0.28)}
+
   .wrap{padding:1.25rem 1rem 3rem;max-width:420px;margin:0 auto}
+
   .card{background:#fff;border-radius:14px;padding:1.25rem;margin-bottom:.875rem;border:1px solid #e8e4dc}
   .sec{font-size:10px;font-weight:700;letter-spacing:.1em;color:#E8500A;text-transform:uppercase;margin-bottom:.875rem}
+
+  /* Status */
   .status-body{display:flex;align-items:center;gap:1.25rem}
   .status-title{font-size:22px;font-weight:800;color:#1a1a1a;line-height:1.2}
   .status-sub{font-size:13px;color:#888;margin-top:5px;font-weight:400}
   .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:7px;vertical-align:middle}
+
+  /* Fechada */
   .closed-card{background:#fff;border:1px solid #e8e4dc;border-radius:14px;padding:2rem 1.5rem;margin-bottom:.875rem;text-align:center}
   .closed-icon{font-size:38px;margin-bottom:.75rem}
   .closed-title{font-size:20px;font-weight:800;color:#1a1a1a}
   .closed-sub{font-size:13px;color:#888;margin-top:6px}
+
+  /* Músculos */
   .muscles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:.875rem}
   .mc{background:#fff;border:1px solid #e8e4dc;border-radius:12px;padding:.875rem .5rem;text-align:center}
   .mc-rank{font-size:22px;margin-bottom:4px}
@@ -33,6 +40,8 @@
   .mc-count{font-size:11px;color:#aaa;margin-top:2px}
   .mc-bar{height:3px;border-radius:2px;background:#f0ede8;margin-top:8px;overflow:hidden}
   .mc-fill{height:100%;border-radius:2px;background:#E8500A;transition:width .4s ease}
+
+  /* Dispositivos */
   .dlist{display:flex;flex-direction:column;gap:8px}
   .drow{display:flex;align-items:center;gap:12px;background:#fff;border:1px solid #e8e4dc;border-radius:12px;padding:.875rem 1rem}
   .dicon{width:36px;height:36px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:#fff5f2}
@@ -43,6 +52,7 @@
   .dstatus{width:8px;height:8px;border-radius:50%;flex-shrink:0}
   .active{background:#E8500A}
   .inactive{background:#ddd}
+
   .upd{font-size:11px;color:#bbb;text-align:right;margin-top:.5rem}
   .footer{text-align:center;font-size:11px;color:#bbb;margin-top:1.5rem}
 </style>
@@ -50,14 +60,11 @@
 <body>
 
 <div class="header">
-  <div class="header-left">
+  <div class="header-logo">
     <div class="header-dot"></div>
     <div class="header-name">GymTracker</div>
   </div>
-  <div style="display:flex;align-items:center;gap:12px">
-    <div class="header-live">Ao vivo</div>
-    <a href="/" class="back-btn">← Dashboard</a>
-  </div>
+  <div class="header-live">Saiba como está sua academia</div>
 </div>
 
 <div class="wrap">
@@ -67,9 +74,12 @@
 
 <script>
 const DEVICES=[
-  {id:'device_001',name:'Leg Press',   muscle:'Perna',  iconPath:'M12 5v14M5 12l7-7 7 7'},
-  {id:'device_002',name:'Pulley',      muscle:'Costas', iconPath:'M12 19V5M5 12l7 7 7-7'},
-  {id:'device_003',name:'Peck Deck',   muscle:'Peito',  iconPath:'M5 12h14M12 5l7 7-7 7'},
+  {id:'device_001',name:'Leg Press',muscle:'Perna',
+   iconPath:'M12 5v14M5 12l7-7 7 7'},
+  {id:'device_002',name:'Pulley',muscle:'Costas',
+   iconPath:'M12 19V5M5 12l7 7 7-7'},
+  {id:'device_003',name:'Supino Vertical',muscle:'Peito',
+   iconPath:'M5 12h14M12 5l7 7-7 7'},
 ];
 const FERIADOS=['01-01','21-04','01-05','07-09','12-10','02-11','15-11','25-12','20-11','20-04'];
 const HOR={
@@ -77,9 +87,6 @@ const HOR={
   1:{p:[[6,12],[13,23]]},2:{p:[[6,12],[13,23]]},3:{p:[[6,12],[13,23]]},
   4:{p:[[6,12],[13,23]]},5:{p:[[6,12],[13,23]]},6:{p:[[8,12]]}
 };
-
-// Converte string BRT sem fuso para Date corretamente
-function parseBRT(str){ return new Date(str+'-03:00'); }
 
 function isAberto(d){
   const k=`${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -94,25 +101,27 @@ function proxHorario(d){
   const nomes=['domingo','segunda','terça','quarta','quinta','sexta','sábado'];
   const h=d.getHours()+d.getMinutes()/60;
   const dia=HOR[d.getDay()];
-  if(dia&&dia.p){for(const[s]of dia.p){if(h<s)return`Abre hoje às ${s}h`;}}
+  if(dia&&dia.p){for(const[s,e]of dia.p){if(h<s)return`Abre hoje às ${s}h`;}}
   for(let i=1;i<=7;i++){
-    const idx=(d.getDay()+i)%7, prox=HOR[idx];
-    if(prox&&prox.p&&prox.p.length)return`Abre ${i===1?'amanhã':nomes[idx]} às ${prox.p[0][0]}h`;
+    const idx=(d.getDay()+i)%7;
+    const prox=HOR[idx];
+    if(prox&&prox.p&&prox.p.length){
+      return`Abre ${i===1?'amanhã':nomes[idx]} às ${prox.p[0][0]}h`;
+    }
   }
   return'';
 }
 
-// Lotacao: aparelhos distintos ativos nos ultimos 5 min
-function lotacao(n){
-  if(n>=3)return{label:'Academia cheia',       sub:'Todos os aparelhos em uso',              color:'#dc2626',fig:'busy'};
-  if(n===2)return{label:'Bem movimentada',      sub:'Dois aparelhos em uso agora',            color:'#d97706',fig:'low'};
-  if(n===1)return{label:'Tranquila',            sub:'Um aparelho em uso agora',               color:'#16a34a',fig:'low'};
-  return         {label:'Sem atividade recente',sub:'Nenhum aparelho usado nos últimos 5 min',color:'#aaa',   fig:'empty'};
+function lotacao(s15){
+  const t=s15.reduce((a,b)=>a+b,0);
+  if(t===0)return{label:'Academia vazia',sub:'Nenhum aparelho em uso agora',color:'#aaa',fig:'empty'};
+  if(t<=2) return{label:'Movimento leve',sub:'Poucos aparelhos em uso',color:'#E8A20A',fig:'low'};
+  return        {label:'Academia movimentada',sub:'Vários aparelhos em uso',color:'#E8500A',fig:'busy'};
 }
 
 function figSVG(type){
   const c=type==='empty'?'#ddd':type==='low'?'#E8A20A':'#E8500A';
-  function p(x,y,o){
+  function pessoa(x,y,o){
     return`<circle cx="${x}" cy="${y-20}" r="5" fill="${c}" opacity="${o}"/>
     <rect x="${x-4}" y="${y-15}" width="8" height="12" rx="3" fill="${c}" opacity="${o}"/>
     <line x1="${x-7}" y1="${y-12}" x2="${x-4}" y2="${y-10}" stroke="${c}" stroke-width="1.5" stroke-linecap="round" opacity="${o}"/>
@@ -120,32 +129,32 @@ function figSVG(type){
     <line x1="${x-2}" y1="${y-3}" x2="${x-3}" y2="${y+8}" stroke="${c}" stroke-width="1.5" stroke-linecap="round" opacity="${o}"/>
     <line x1="${x+2}" y1="${y-3}" x2="${x+3}" y2="${y+8}" stroke="${c}" stroke-width="1.5" stroke-linecap="round" opacity="${o}"/>`;
   }
-  let b='';
-  if(type==='empty'){b=`<circle cx="44" cy="28" r="9" fill="${c}"/><line x1="38" y1="28" x2="50" y2="28" stroke="#fff" stroke-width="2" stroke-linecap="round"/>`;}
-  else if(type==='low'){b=p(44,44,.9);}
-  else{b=p(22,44,.6)+p(44,44,1)+p(66,44,.75);}
-  return`<svg width="88" height="64" viewBox="0 0 88 64" aria-hidden="true">${b}</svg>`;
+  let bodies='';
+  if(type==='empty'){
+    bodies=`<circle cx="44" cy="28" r="9" fill="${c}"/>
+    <line x1="38" y1="28" x2="50" y2="28" stroke="#fff" stroke-width="2" stroke-linecap="round"/>`;
+  }else if(type==='low'){
+    bodies=pessoa(44,44,.9);
+  }else{
+    bodies=pessoa(22,44,.6)+pessoa(44,44,1)+pessoa(66,44,.75);
+  }
+  return`<svg width="88" height="64" viewBox="0 0 88 64" aria-hidden="true">${bodies}</svg>`;
 }
 
 function render(sessoes){
-  const agora=new Date(), aberto=isAberto(agora), now=agora.getTime();
-  const t5=5*60*1000, t60=60*60*1000;
-
-  const s5=DEVICES.map(d=>sessoes.filter(s=>{
-    const dt=now-parseBRT(s.inicio).getTime();
-    return s.device_id===d.id&&dt>=0&&dt<t5;
-  }).length);
-  const s60=DEVICES.map(d=>sessoes.filter(s=>{
-    const dt=now-parseBRT(s.inicio).getTime();
-    return s.device_id===d.id&&dt>=0&&dt<t60;
-  }).length);
-
-  const dispositivosAtivos=s5.filter(c=>c>0).length;
+  const agora=new Date();
+  const aberto=isAberto(agora);
+  const now=agora.getTime();
+  const t20=20*60*1000,t60=60*60*1000;
+  const s20=DEVICES.map(d=>sessoes.filter(s=>s.device_id===d.id&&(now-new Date(s.inicio).getTime())<t20).length);
+  const s60=DEVICES.map(d=>sessoes.filter(s=>s.device_id===d.id&&(now-new Date(s.inicio).getTime())<t60).length);
   const maxS=Math.max(...s60,1);
-  const muscleData=DEVICES.map((d,i)=>({name:d.muscle,count:s60[i],pct:Math.round(s60[i]/maxS*100)})).sort((a,b)=>b.count-a.count);
+  const muscleData=DEVICES.map((d,i)=>({name:d.muscle,count:s60[i],pct:Math.round(s60[i]/maxS*100)}))
+    .sort((a,b)=>b.count-a.count);
   const ranks=['🥇','🥈','🥉'];
-  const st=lotacao(dispositivosAtivos);
+  const st=lotacao(s20);
   const hora=agora.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+
   let h='';
 
   if(!aberto){
@@ -156,7 +165,7 @@ function render(sessoes){
     </div>`;
   }else{
     h+=`<div class="card">
-      <div class="sec">Status agora · últimos 5 min</div>
+      <div class="sec">Status agora · últimos 20 min</div>
       <div class="status-body">
         <div>${figSVG(st.fig)}</div>
         <div>
@@ -179,7 +188,9 @@ function render(sessoes){
 
   h+=`<div class="sec">Frequência de uso · última hora</div><div class="dlist">`;
   DEVICES.forEach((d,i)=>{
-    const c=s60[i], freq=c>0?`Usado a cada ~${Math.round(60/c)} min`:'Sem uso registrado';
+    const c=s60[i];
+    const freq=c>0?`Usado a cada ~${Math.round(60/c)} min`:'Sem uso registrado';
+    const ativo=s20[i]>0;
     h+=`<div class="drow">
       <div class="dicon"><svg viewBox="0 0 24 24"><path d="${d.iconPath}"/></svg></div>
       <div style="flex:1;min-width:0">
@@ -187,10 +198,11 @@ function render(sessoes){
         <div class="dmuscle">${d.muscle}</div>
         <div class="dfreq">${freq}</div>
       </div>
-      <div class="dstatus ${s5[i]>0?'active':'inactive'}"></div>
+      <div class="dstatus ${ativo?'active':'inactive'}"></div>
     </div>`;
   });
   h+=`</div><div class="upd">Atualizado às ${hora}</div>`;
+
   document.getElementById('main').innerHTML=h;
 }
 
@@ -200,10 +212,16 @@ async function go(){
     const data=await r.json();
     render(Array.isArray(data)?data:(data.sessoes||[]));
   }catch(e){
-    document.getElementById('main').innerHTML='<div style="text-align:center;padding:3rem;color:#aaa;font-size:14px">Conectando...</div>';
+    const mock=[],n=Date.now();
+    mock.push({device_id:'device_002',inicio:new Date(n-4*60000).toISOString()});
+    mock.push({device_id:'device_002',inicio:new Date(n-9*60000).toISOString()});
+    mock.push({device_id:'device_003',inicio:new Date(n-20*60000).toISOString()});
+    mock.push({device_id:'device_001',inicio:new Date(n-40*60000).toISOString()});
+    mock.push({device_id:'device_002',inicio:new Date(n-55*60000).toISOString()});
+    render(mock);
   }
 }
-go(); setInterval(go,30000);
+go();setInterval(go,30000);
 </script>
 </body>
 </html>
