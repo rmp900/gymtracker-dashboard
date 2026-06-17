@@ -130,6 +130,125 @@
 
     #loading { text-align: center; color: #64748b; padding: 48px; }
     #error   { color: #ef4444; text-align: center; padding: 48px; display: none; }
+
+    /* ── Seção sessões de teste ── */
+    .test-section {
+      margin-top: 40px;
+    }
+    .test-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .test-title {
+      font-size: 1rem;
+      font-weight: 600;
+      color: #e2e8f0;
+    }
+    .test-subtitle {
+      font-size: 0.75rem;
+      color: #64748b;
+      margin-top: 2px;
+    }
+    .date-nav {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 5px 12px;
+    }
+    .date-nav button {
+      background: none;
+      border: none;
+      color: #cbd5e1;
+      cursor: pointer;
+      font-size: 16px;
+      padding: 0 4px;
+      line-height: 1;
+    }
+    .date-nav button:disabled { color: #334155; cursor: default; }
+    .date-nav input[type=date] {
+      background: transparent;
+      border: none;
+      color: #cbd5e1;
+      font-size: 13px;
+      font-weight: 600;
+      outline: none;
+      cursor: pointer;
+    }
+    .date-nav input[type=date]::-webkit-calendar-picker-indicator { filter: invert(0.6); cursor: pointer; }
+    .btn-hoje {
+      background: #ea580c;
+      border: none;
+      color: #fff;
+      font-size: 11px;
+      font-weight: 600;
+      border-radius: 5px;
+      padding: 3px 8px;
+      cursor: pointer;
+    }
+    .test-table-wrap {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .test-table-meta {
+      padding: 14px 20px 10px;
+      border-bottom: 1px solid #334155;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .test-table-meta span { font-size: 12px; color: #64748b; }
+    .btn-reload {
+      background: transparent;
+      border: 1px solid #334155;
+      color: #94a3b8;
+      font-size: 11px;
+      border-radius: 6px;
+      padding: 3px 10px;
+      cursor: pointer;
+    }
+    .test-table { width: 100%; border-collapse: collapse; }
+    .test-table th {
+      padding: 10px 20px;
+      text-align: left;
+      font-size: 10px;
+      font-weight: 700;
+      color: #475569;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      border-bottom: 1px solid #334155;
+      background: #162032;
+    }
+    .test-table td {
+      padding: 11px 20px;
+      font-size: 13px;
+      border-bottom: 1px solid #1a2a3a;
+      color: #cbd5e1;
+    }
+    .test-table tr:last-child td { border-bottom: none; }
+    .test-table tr:hover td { background: #243447; }
+    .dev-badge {
+      display: inline-block;
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 5px;
+      padding: 2px 7px;
+      font-size: 11px;
+      font-family: monospace;
+      color: #94a3b8;
+    }
+    .dur-val { font-weight: 700; color: #e2e8f0; }
+    .empty-row { padding: 32px; text-align: center; color: #475569; font-size: 13px; }
   </style>
 </head>
 <body>
@@ -147,6 +266,31 @@
 <div id="error"></div>
 <div class="grid" id="grid" style="display:none"></div>
 
+<!-- ── Sessões dos dispositivos em teste ── -->
+<div class="test-section" id="test-section" style="display:none">
+  <div class="test-header">
+    <div>
+      <div class="test-title">🧪 Sessões dos Dispositivos em Teste</div>
+      <div class="test-subtitle">device_004 · device_005 — dados brutos sem filtragem de anomalias</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <div class="date-nav">
+        <button id="btn-prev">‹</button>
+        <input type="date" id="date-picker" />
+        <button id="btn-next" disabled>›</button>
+      </div>
+      <button class="btn-hoje" id="btn-hoje" style="display:none">Hoje</button>
+      <button class="btn-reload" id="btn-reload">↺ Atualizar</button>
+    </div>
+  </div>
+  <div class="test-table-wrap">
+    <div class="test-table-meta">
+      <span id="test-meta">—</span>
+    </div>
+    <div id="test-table-body"></div>
+  </div>
+</div>
+
 <script>
 const API = 'https://gymtracker-api-production-bc16.up.railway.app';
 
@@ -161,9 +305,7 @@ const DEVICE_NAMES = {
 
 function parseBRT(str) {
   if (!str) return null;
-  // Se já tem info de fuso (Z, +HH, -HH:MM no final), parse direto
   if (/Z$|[+-]\d{2}:\d{2}$/.test(str)) return new Date(str);
-  // Caso contrário assume BRT (UTC-3)
   return new Date(str + '-03:00');
 }
 
@@ -171,8 +313,8 @@ function tempoDesde(str) {
   const d = parseBRT(str);
   if (!d || isNaN(d.getTime())) return '—';
   const diff = Math.max(0, Math.floor((Date.now() - d) / 1000));
-  if (diff < 60)    return `${diff}s atrás`;
-  if (diff < 3600)  return `${Math.floor(diff / 60)}min atrás`;
+  if (diff < 60)   return `${diff}s atrás`;
+  if (diff < 3600) return `${Math.floor(diff / 60)}min atrás`;
   const h = Math.floor(diff / 3600);
   const m = Math.floor((diff % 3600) / 60);
   return m > 0 ? `${h}h ${m}min atrás` : `${h}h atrás`;
@@ -315,7 +457,135 @@ function renderCard(d) {
   `;
 }
 
-// ─── Fetch ──────────────────────────────────────────────────
+// ─── Tabela de sessões de teste ─────────────────────────────
+
+const DEVICES_TESTE = new Set(['device_004', 'device_005']);
+const DEVICE_NAMES_TESTE = { device_004: 'Protótipo Bateria', device_005: 'Protótipo Esteira' };
+
+function toYMD(d) { return d.toLocaleDateString('sv-SE'); }
+function addDays(d, n) { const x = new Date(d); x.setDate(x.getDate() + n); return x; }
+function isToday(d) { return toYMD(d) === toYMD(new Date()); }
+
+function fmtDur(s) {
+  if (s === null || s === undefined || s < 0) return '—';
+  if (s < 60)  return `${s}s`;
+  const m = Math.floor(s / 60);
+  if (m < 60)  return `${m}min ${s % 60}s`;
+  return `${Math.floor(m / 60)}h ${m % 60}min`;
+}
+
+function fmtDtHora(str) {
+  const d = parseBRT(str);
+  if (!d || isNaN(d.getTime())) return '—';
+  const hoje = isToday(d);
+  const hora  = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  if (hoje) return `Hoje ${hora}`;
+  return `${d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} ${hora}`;
+}
+
+let selectedDate = new Date();
+
+function updateDateUI() {
+  const picker = document.getElementById('date-picker');
+  const btnNext = document.getElementById('btn-next');
+  const btnHoje = document.getElementById('btn-hoje');
+  if (picker) picker.value = toYMD(selectedDate);
+  if (btnNext) btnNext.disabled = isToday(selectedDate);
+  if (btnHoje) btnHoje.style.display = isToday(selectedDate) ? 'none' : 'inline-block';
+}
+
+async function carregarSessoesTeste(date) {
+  const ymd  = toYMD(date);
+  const meta = document.getElementById('test-meta');
+  const body = document.getElementById('test-table-body');
+  if (meta) meta.textContent = 'Carregando...';
+  if (body) body.innerHTML  = '';
+
+  try {
+    const res = await fetch(`${API}/sessoes/dia?data=${ymd}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const raw  = await res.json();
+    const arr  = (Array.isArray(raw) ? raw : raw.sessoes || [])
+      .filter(s => DEVICES_TESTE.has(s.device_id))
+      .sort((a, b) => new Date(b.inicio) - new Date(a.inicio));
+
+    const label = isToday(date) ? 'Hoje' : date.toLocaleDateString('pt-BR', { weekday: 'short', day: 'numeric', month: 'short' });
+    if (meta) meta.textContent = `${arr.length} sessão${arr.length !== 1 ? 'ões' : ''} — ${label} — dados brutos (sem filtro de anomalias)`;
+
+    if (!arr.length) {
+      if (body) body.innerHTML = `<div class="empty-row">Nenhuma sessão registrada neste dia para os dispositivos em teste.</div>`;
+      return;
+    }
+
+    const rows = arr.map(s => {
+      const nome = DEVICE_NAMES_TESTE[s.device_id] || s.device_id;
+      const dur  = s.duracao_segundos ?? s.duracao;
+      const isAnomala = dur && dur > 3600;
+      return `<tr${isAnomala ? ' title="⚠️ Sessão com duração anômala (>1h)"' : ''}>
+        <td><span style="color:#e2e8f0;font-weight:600">${nome}</span></td>
+        <td>${fmtDtHora(s.inicio)}</td>
+        <td>${fmtDtHora(s.fim)}</td>
+        <td><span class="dur-val${isAnomala ? ' warn' : ''}">${fmtDur(dur)}${isAnomala ? ' ⚠️' : ''}</span></td>
+        <td>${s.bat_pct !== null && s.bat_pct !== undefined ? `<span style="color:${s.bat_pct > 50 ? '#22c55e' : s.bat_pct > 20 ? '#f59e0b' : '#ef4444'};font-weight:600">${s.bat_pct}%</span>` : '<span style="color:#475569">—</span>'}</td>
+        <td>${s.rssi !== null && s.rssi !== undefined ? `<span style="color:#94a3b8">${s.rssi} dBm</span>` : '<span style="color:#475569">—</span>'}</td>
+        <td><span class="dev-badge">${s.device_id}</span></td>
+      </tr>`;
+    }).join('');
+
+    if (body) body.innerHTML = `
+      <table class="test-table">
+        <thead>
+          <tr>
+            <th>Dispositivo</th>
+            <th>Início</th>
+            <th>Fim</th>
+            <th>Duração</th>
+            <th>Bateria</th>
+            <th>RSSI</th>
+            <th>Device ID</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+  } catch (e) {
+    if (meta) meta.textContent = `Erro: ${e.message}`;
+  }
+}
+
+function initTabelaTeste() {
+  updateDateUI();
+  carregarSessoesTeste(selectedDate);
+
+  document.getElementById('btn-prev').addEventListener('click', () => {
+    selectedDate = addDays(selectedDate, -1);
+    updateDateUI();
+    carregarSessoesTeste(selectedDate);
+  });
+  document.getElementById('btn-next').addEventListener('click', () => {
+    if (!isToday(selectedDate)) {
+      selectedDate = addDays(selectedDate, 1);
+      updateDateUI();
+      carregarSessoesTeste(selectedDate);
+    }
+  });
+  document.getElementById('btn-hoje').addEventListener('click', () => {
+    selectedDate = new Date();
+    updateDateUI();
+    carregarSessoesTeste(selectedDate);
+  });
+  document.getElementById('date-picker').addEventListener('change', e => {
+    const d = new Date(e.target.value + 'T12:00:00');
+    if (!isNaN(d)) { selectedDate = d; updateDateUI(); carregarSessoesTeste(selectedDate); }
+  });
+  document.getElementById('btn-reload').addEventListener('click', () => {
+    carregarSessoesTeste(selectedDate);
+  });
+
+  // Auto-refresh 30s quando hoje
+  setInterval(() => { if (isToday(selectedDate)) carregarSessoesTeste(selectedDate); }, 30000);
+}
+
+// ─── Fetch principal (cards de diagnóstico) ──────────────────
 
 async function carregar() {
   try {
@@ -333,6 +603,13 @@ async function carregar() {
     grid.innerHTML = data.length
       ? data.map(renderCard).join('')
       : '<p style="color:#475569; grid-column:1/-1; text-align:center">Nenhum device encontrado.</p>';
+
+    // Mostra seção de teste na primeira carga
+    const testSection = document.getElementById('test-section');
+    if (testSection && testSection.style.display === 'none') {
+      testSection.style.display = 'block';
+      initTabelaTeste();
+    }
 
     const agora = new Date().toLocaleTimeString('pt-BR');
     document.getElementById('refresh-info').textContent = `Atualizado às ${agora}`;
