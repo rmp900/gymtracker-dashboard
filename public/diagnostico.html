@@ -161,21 +161,26 @@ const DEVICE_NAMES = {
 
 function parseBRT(str) {
   if (!str) return null;
+  // Se já tem info de fuso (Z, +HH, -HH:MM no final), parse direto
+  if (/Z$|[+-]\d{2}:\d{2}$/.test(str)) return new Date(str);
+  // Caso contrário assume BRT (UTC-3)
   return new Date(str + '-03:00');
 }
 
 function tempoDesde(str) {
   const d = parseBRT(str);
-  if (!d) return '—';
-  const diff = Math.floor((Date.now() - d) / 1000);
-  if (diff < 60)   return `${diff}s atrás`;
-  if (diff < 3600) return `${Math.floor(diff / 60)}min atrás`;
-  return `${Math.floor(diff / 3600)}h ${Math.floor((diff % 3600) / 60)}min atrás`;
+  if (!d || isNaN(d.getTime())) return '—';
+  const diff = Math.max(0, Math.floor((Date.now() - d) / 1000));
+  if (diff < 60)    return `${diff}s atrás`;
+  if (diff < 3600)  return `${Math.floor(diff / 60)}min atrás`;
+  const h = Math.floor(diff / 3600);
+  const m = Math.floor((diff % 3600) / 60);
+  return m > 0 ? `${h}h ${m}min atrás` : `${h}h atrás`;
 }
 
 function isStale(str, limitMin = 120) {
   const d = parseBRT(str);
-  if (!d) return false;
+  if (!d || isNaN(d.getTime())) return false;
   return (Date.now() - d) / 60000 > limitMin;
 }
 
@@ -253,14 +258,14 @@ function renderCard(d) {
         <!-- Bateria -->
         <div>
           <div class="metric-label">🔋 Bateria</div>
-          ${d.bat_pct !== null && d.bat_pct !== undefined ? `
+          ${(d.bat_pct !== null && d.bat_pct !== undefined && d.bat_pct > 0) ? `
             <div class="bat-bar-bg">
               <div class="bat-bar-fill"
                    style="width:${d.bat_pct}%; background:${batCor(d.bat_pct)}">
               </div>
             </div>
             <div class="bat-value" style="color:${batCor(d.bat_pct)}">${d.bat_pct}%</div>
-          ` : '<div class="no-data">sem dados</div>'}
+          ` : '<div class="no-data">sem dados (firmware sem leitura de bateria)</div>'}
         </div>
 
         <div class="divider"></div>
