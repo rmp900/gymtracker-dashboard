@@ -6,7 +6,7 @@ import {
 
 const API_BASE = "https://gymtracker-api-production-bc16.up.railway.app";
 
-const DEVICE_NAMES  = { device_001: "Leg Press", device_002: "Pulley", device_003: "Peck Deck" };
+const DEVICE_NAMES  = { device_001: "Leg Press", device_002: "Pulley", device_003: "Supino Máquina" };
 const DEVICE_COLORS = { device_001: "#5DCAA5",   device_002: "#378ADD", device_003: "#D85A30"   };
 const DEVICES_TESTE = new Set(["device_004"]);
 const DURACAO_MAX_S = 3600;
