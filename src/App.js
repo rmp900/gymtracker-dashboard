@@ -3,13 +3,14 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieCha
 
 const API_BASE = "https://gymtracker-api-production-bc16.up.railway.app";
 
-const DEVICE_NAMES  = { device_001: "Leg Press",  device_002: "Pulley",   device_003: "Supino Máquina" };
-const DEVICE_COLORS = { device_001: "#5DCAA5",     device_002: "#378ADD",  device_003: "#D85A30" };
+const DEVICE_NAMES  = { device_001: "Leg Press",  device_002: "Pulley",   device_003: "Supino Máquina", device_005: "Esteira B" };
+const DEVICE_COLORS = { device_001: "#5DCAA5",     device_002: "#378ADD",  device_003: "#D85A30",       device_005: "#8B5CF6" };
 
 // Devices excluídos do dashboard — apenas aparecem no diagnóstico
-const DEVICES_TESTE = new Set(["device_004", "device_005", "device_006"]);
+const DEVICES_TESTE = new Set(["device_004", "device_006"]);
 
-const DURACAO_MAX_S = 3600; // sessões > 1h = anomalia (devices de campo)
+const DURACAO_MAX_S = 3600; // padrão 1h
+const DURACAO_MAX_POR_DEVICE = { device_005: 14400 }; // esteira: até 4h é normal
 const O = "#ea580c", OL = "#fff7ed", OD = "#9a3412", BG = "#f5f4f0";
 const WHITE = "#ffffff", DARK = "#1c1917", MID = "#78716c", BORDER = "#e7e5e4";
 
@@ -48,8 +49,8 @@ function limpar(raw) {
   const parsed = raw.map(parseSession).filter(s => !DEVICES_TESTE.has(s.deviceId));
   const dedup = deduplicar(parsed);
   return {
-    normais:  dedup.filter(s => !s.duracao || s.duracao <= DURACAO_MAX_S),
-    anomalas: dedup.filter(s => s.duracao  &&  s.duracao >  DURACAO_MAX_S),
+    normais:  dedup.filter(s => !s.duracao || s.duracao <= (DURACAO_MAX_POR_DEVICE[s.deviceId] || DURACAO_MAX_S)),
+    anomalas: dedup.filter(s => s.duracao  &&  s.duracao >  (DURACAO_MAX_POR_DEVICE[s.deviceId] || DURACAO_MAX_S)),
     dupCount: parsed.length - dedup.length,
   };
 }
@@ -313,7 +314,7 @@ export default function GymTracker() {
         )}
 
         <div className="gt-row fade-up" style={{ marginBottom: 20 }}>
-          <StatCard label="Aparelhos" value={3} sub="monitorados" />
+          <StatCard label="Aparelhos" value={4} sub="monitorados" />
           <StatCard label={isToday(selectedDate) ? "Sessões hoje" : "Sessões no dia"} value={loading ? "—" : stats.total} sub={fmtDateLabel(selectedDate)} />
           <StatCard label="Horário de pico" value={stats.horarioPico} sub="mais movimentado" />
           <StatCard label="Duração média" value={stats.duracaoMedia ? fmtDur(stats.duracaoMedia) : "—"} sub="por sessão" />
