@@ -175,7 +175,7 @@
   <div class="test-header">
     <div>
       <div class="test-title">🧪 Sessões dos Dispositivos em Teste</div>
-      <div class="test-subtitle">device_004 (Protótipo Bateria) · device_005 (Esteira B) — dados brutos sem filtragem</div>
+      <div class="test-subtitle">device_005 (Esteira B) · device_006 (LoRa) — dados brutos sem filtragem</div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
       <div class="date-nav">
@@ -202,8 +202,8 @@ const DEVICE_NAMES = {
   device_001: 'Leg Press',
   device_002: 'Pulley',
   device_003: 'Supino Máquina',
-  device_004: 'Protótipo Bateria',
   device_005: 'Esteira B',
+  device_006: 'LoRa — Device 006',
 };
 
 // ─── Helpers ────────────────────────────────────────────────
@@ -293,7 +293,7 @@ function renderCard(d) {
       <div class="card-header">
         <div>
           <div class="device-name">${nome}</div>
-          <div class="device-id">${d.device_id}</div>
+          <div class="device-id">${d.device_id}${d.device_id === 'device_006' ? ' &nbsp;<span style="background:#0ea5e9;color:#fff;font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;letter-spacing:0.05em">LoRa</span>' : ''}</div>
         </div>
         <div class="last-seen ${stale ? 'stale' : ''}">
           ${stale ? '⚠️ ' : ''}${tempoDesde(d.ultimo_contato)}
@@ -365,9 +365,9 @@ function renderCard(d) {
 
 // ─── Tabela sessões de teste ──────────────────────────────────────────────────
 
-const DEVICES_TESTE_IDS = new Set(['device_004', 'device_005']);
-const NOMES_TESTE = { device_004: 'Protótipo Bateria', device_005: 'Esteira B' };
-const LIMITE_ANOMALIA = { device_004: 3600, device_005: 14400 }; // 004=1h, 005=4h
+const DEVICES_TESTE_IDS = new Set(['device_004', 'device_005', 'device_006']);
+const NOMES_TESTE = { device_004: 'Protótipo Bateria', device_005: 'Esteira B', device_006: 'LoRa — Device 006' };
+const LIMITE_ANOMALIA = { device_004: 3600, device_005: 14400, device_006: 3600 }; // 004=1h, 005=4h
 
 function toYMD(d) { return d.toLocaleDateString('sv-SE'); }
 function addDays(d, n) { const x = new Date(d); x.setDate(x.getDate() + n); return x; }
