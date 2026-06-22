@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>GymTracker — Vision Demo</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #F2F0EA;
+      --header:   #1C1C1C;
+      --strip:    #2A1205;
+      --orange:   #D85A30;
+      --green:    #5DCAA5;
+      --blue:     #378ADD;
+      --card:     #FFFFFF;
+      --text:     #1C1C1C;
+      --muted:    #888888;
+      --border:   #E8E5DF;
+      --sim-bg:   #3D2800;
+      --sim-text: #F5C842;
+    }
+
+    body {
+      background: var(--bg);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      max-width: 430px;
+      margin: 0 auto;
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    .header {
+      background: var(--header);
+      padding: 13px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 200;
+    }
+    .header-left { display: flex; align-items: center; gap: 10px; }
+    .back-btn {
+      background: none; border: none; color: #fff;
+      font-size: 22px; cursor: pointer; padding: 0;
+      display: none; line-height: 1;
+    }
+    .logo { color: #fff; font-weight: 900; font-size: 20px; letter-spacing: 0.06em; }
+    .badge {
+      border-radius: 20px; padding: 5px 12px;
+      font-size: 12px; font-weight: 700;
+    }
+    .badge-live  { background: var(--orange); color: #fff; }
+    .badge-demo  { background: #3D2800; color: var(--sim-text); }
+
+    /* ── Date strip ── */
+    .strip {
+      background: var(--strip);
+      padding: 6px 16px;
+      display: flex;
+      justify-content: space-between;
+    }
+    .strip-date { color: #BBA98A; font-size: 12px; text-transform: capitalize; }
+    .strip-time { color: #8A7A6A; font-size: 12px; }
+
+    /* ── Sim banners ── */
+    .sim-banner {
+      background: var(--sim-bg); color: var(--sim-text);
+      font-size: 10px; font-weight: 700; letter-spacing: 0.09em;
+      text-align: center; padding: 5px 0;
+    }
+    .sim-extra {
+      background: #4A3000; color: var(--sim-text);
+      font-size: 10px; font-weight: 600; letter-spacing: 0.06em;
+      text-align: center; padding: 4px 0;
+      display: none;
+    }
+
+    /* ── Screens ── */
+    .screen { display: none; padding: 16px 16px 100px; }
+    .screen.active { display: block; }
+
+    /* ── Bottom nav ── */
+    .bottom-nav {
+      position: fixed; bottom: 0;
+      left: 50%; transform: translateX(-50%);
+      width: 100%; max-width: 430px;
+      background: var(--card);
+      border-top: 1px solid var(--border);
+      display: flex; z-index: 100;
+    }
+    .nav-btn {
+      flex: 1; padding: 10px 0 8px;
+      border: none; background: none; cursor: pointer;
+      color: var(--muted);
+      display: flex; flex-direction: column; align-items: center; gap: 2px;
+      font-family: inherit;
+    }
+    .nav-btn.active { color: var(--orange); }
+    .nav-icon { font-size: 17px; }
+    .nav-label { font-size: 9px; font-weight: 400; letter-spacing: 0.02em; }
+    .nav-btn.active .nav-label { font-weight: 700; }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--card);
+      border-radius: 16px;
+      padding: 16px 18px;
+      margin-bottom: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.07);
+    }
+    .card-accent-green { background: #F0FAF6; }
+    .card-accent-red   { background: #FFF5F0; }
+    .card-accent-amber { background: #FFFBF0; }
+
+    /* ── Typography ── */
+    .label {
+      color: var(--orange); font-size: 11px; font-weight: 700;
+      letter-spacing: 0.09em; text-transform: uppercase; margin-bottom: 6px;
+    }
+    .big-val { font-size: 42px; font-weight: 900; color: var(--text); line-height: 1; }
+    .big-sub { font-size: 13px; color: var(--muted); margin-top: 4px; }
+    .muted   { color: var(--muted); }
+    .sep     { border-bottom: 1px solid var(--border); }
+
+    /* ── Pill buttons ── */
+    .pill-row { display: flex; gap: 8px; margin-bottom: 16px; }
+    .pill-btn {
+      flex: 1; padding: 8px 0; border-radius: 20px;
+      border: none; cursor: pointer;
+      background: var(--card); color: var(--text);
+      font-weight: 700; font-size: 13px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      font-family: inherit; transition: all 0.15s;
+    }
+    .pill-btn.active { background: var(--orange); color: #fff; box-shadow: none; }
+
+    /* ── KPI grid ── */
+    .kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+    .kpi-grid .card { margin-bottom: 0; }
+
+    /* ── Home cards ── */
+    .home-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+    .home-card {
+      background: var(--card); border: none; border-radius: 16px;
+      padding: 18px 14px; text-align: left; cursor: pointer;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.09); font-family: inherit;
+    }
+    .home-card-wide {
+      background: var(--orange); border: none; border-radius: 16px;
+      padding: 18px 16px; text-align: left; cursor: pointer; width: 100%;
+      box-shadow: 0 3px 12px rgba(216,90,48,0.35); font-family: inherit;
+    }
+    .card-icon  { font-size: 24px; display: block; }
+    .card-title { font-weight: 700; font-size: 13px; margin: 10px 0 4px; line-height: 1.3; color: var(--text); }
+    .card-sub   { font-size: 11px; color: var(--muted); }
+    .home-card-wide .card-title { color: #fff; font-size: 14px; }
+    .home-card-wide .card-sub   { color: rgba(255,255,255,0.75); font-size: 12px; }
+
+    /* ── Bar (CSS) ── */
+    .bar-track { height: 8px; background: var(--bg); border-radius: 4px; margin-top: 5px; }
+    .bar-fill  { height: 8px; border-radius: 4px; transition: width 0.4s ease; }
+    .equip-row { margin-bottom: 14px; }
+    .equip-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+
+    /* ── Date nav ── */
+    .date-nav { display: flex; align-items: center; gap: 8px; margin-bottom: 18px; }
+    .date-nav-btn {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 10px; padding: 9px 14px;
+      font-size: 18px; cursor: pointer; color: var(--text); font-family: inherit;
+    }
+    .date-nav-btn:disabled { opacity: 0.3; cursor: default; }
+    .date-display {
+      flex: 1; background: var(--card); border: 1px solid var(--border);
+      border-radius: 10px; padding: 9px 14px;
+      text-align: center; font-size: 14px; font-weight: 700; color: var(--text);
+    }
+    .today-btn {
+      background: var(--orange); border: none; border-radius: 10px;
+      padding: 9px 12px; font-size: 12px; font-weight: 700; color: #fff;
+      cursor: pointer; font-family: inherit; display: none;
+    }
+
+    /* ── Select ── */
+    select {
+      width: 100%; padding: 10px 36px 10px 14px;
+      border-radius: 12px; border: 1px solid var(--border);
+      font-size: 14px; background: var(--card); color: var(--text);
+      margin-bottom: 16px; font-family: inherit; appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23888' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 14px center;
+    }
+
+    /* ── Misc ── */
+    .loading { text-align: center; color: var(--muted); padding: 40px 0; font-size: 14px; }
+    .ocp-circle {
+      width: 130px; height: 130px; border-radius: 50%;
+      border: 6px solid var(--orange); background: #FFF5F0;
+      margin: 0 auto 12px;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+    }
+    .esteira-row { display: flex; gap: 12px; }
+    .esteira-box {
+      width: 44px; height: 44px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center; font-size: 20px;
+    }
+    .esteira-box.ocp   { background: #FFE8E3; border: 2px solid #E53935; }
+    .esteira-box.livre { background: #E8FAF4; border: 2px solid var(--green); }
+    .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .dot-sm { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .flex-between { display: flex; justify-content: space-between; align-items: center; }
+    .center-col { display: flex; flex-direction: column; align-items: center; }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="header-left">
+    <button class="back-btn" id="back-btn" onclick="goHome()">‹</button>
+    <span class="logo">GYMTRACKER</span>
+  </div>
+  <span class="badge badge-demo" id="header-badge">DEMO</span>
+</header>
+
+<!-- STRIP -->
+<div class="strip">
+  <span class="strip-date" id="strip-date"></span>
+  <span class="strip-time" id="strip-time"></span>
+</div>
+
+<!-- SIM BANNERS -->
+<div class="sim-banner" id="sim-banner">VISÃO DE PRODUTO — DADOS SIMULADOS</div>
+<div class="sim-extra"  id="sim-extra">VISÃO FUTURA — REQUER DADOS DE MÚLTIPLAS UNIDADES</div>
+
+<!-- ── HOME ────────────────────────────────────────────────────────────── -->
+<div class="screen active" id="screen-home">
+  <p class="muted" style="font-size:13px;margin-bottom:14px">Selecione uma visão para explorar</p>
+  <div class="home-grid">
+    <button class="home-card" onclick="showScreen('screen1')">
+      <span class="card-icon">⇄</span>
+      <p class="card-title">Substituição de Equipamento</p>
+      <p class="card-sub">Qual aparelho posso remover?</p>
+    </button>
+    <button class="home-card" onclick="showScreen('screen2')">
+      <span class="card-icon">↑</span>
+      <p class="card-title">Validação de Novo Equipamento</p>
+      <p class="card-sub">O aparelho novo está sendo adotado?</p>
+    </button>
+    <button class="home-card" onclick="showScreen('screen3')">
+      <span class="card-icon">🏗</span>
+      <p class="card-title">Benchmark para Novas Unidades</p>
+      <p class="card-sub">Qual mix de aparelhos priorizar?</p>
+    </button>
+    <button class="home-card" onclick="showScreen('screen4')">
+      <span class="card-icon">◉</span>
+      <p class="card-title">Ocupação ao Vivo</p>
+      <p class="card-sub">Como está a academia agora?</p>
+    </button>
+  </div>
+  <button class="home-card-wide" onclick="showScreen('screen5')">
+    <span class="card-icon">▦</span>
+    <p class="card-title">Dados Reais em Campo</p>
+    <p class="card-sub">Águia Academia — ao vivo · 4 semanas de coleta</p>
+  </button>
+</div>
+
+<!-- ── TELA 1 — Substituição ───────────────────────────────────────────── -->
+<div class="screen" id="screen1">
+  <p class="muted" style="font-size:13px;margin-bottom:16px">Qual aparelho posso remover para abrir espaço?</p>
+  <div class="pill-row" id="period-pills">
+    <button class="pill-btn"        onclick="setPeriod(7,this)">7 dias</button>
+    <button class="pill-btn active" onclick="setPeriod(30,this)">30 dias</button>
+    <button class="pill-btn"        onclick="setPeriod(90,this)">90 dias</button>
+  </div>
+  <div class="card">
+    <div class="label" id="s1-label">Utilização por aparelho — 30 dias</div>
+    <div id="s1-bars"></div>
+    <div style="border-top:2px dashed #E53935;margin-top:8px;padding-top:10px">
+      <span style="color:#E53935;font-size:11px;font-weight:700">▲ Linha de corte — 20% de utilização</span>
+    </div>
+  </div>
+  <div class="card card-accent-red">
+    <div class="label">Recomendação</div>
+    <p id="s1-rec-title" style="font-weight:800;font-size:17px;color:var(--text);margin:0 0 4px"></p>
+    <p id="s1-rec-sub"   style="font-size:13px;color:var(--muted);margin:0"></p>
+  </div>
+</div>
+
+<!-- ── TELA 2 — Validação ──────────────────────────────────────────────── -->
+<div class="screen" id="screen2">
+  <p class="muted" style="font-size:13px;margin-bottom:16px">O aparelho novo que instalei está sendo adotado?</p>
+  <select id="equip-select" onchange="renderScreen2()">
+    <option value="hack">Hack Squat (instalado há 6 semanas)</option>
+    <option value="smith">Smith Machine (instalada há 3 semanas)</option>
+  </select>
+  <div style="text-align:center;margin-bottom:6px">
+    <span id="s2-badge" style="border-radius:20px;padding:6px 20px;font-weight:700;font-size:14px;display:inline-block;color:#fff"></span>
+  </div>
+  <p class="muted" style="font-size:11px;text-align:center;margin-bottom:16px">Alta aderência = acima de 40 sessões/semana após semana 3</p>
+  <div class="card">
+    <div class="label">Curva de adoção — sessões por semana</div>
+    <div style="display:flex;gap:16px;margin-bottom:8px">
+      <div style="display:flex;align-items:center;gap:4px"><div style="width:8px;height:8px;border-radius:50%;background:var(--green)"></div><span style="font-size:10px;color:var(--muted)">Unidade 1</span></div>
+      <div style="display:flex;align-items:center;gap:4px"><div style="width:8px;height:8px;border-radius:50%;background:var(--blue)"></div><span style="font-size:10px;color:var(--muted)">Unidade 2</span></div>
+      <div style="display:flex;align-items:center;gap:4px"><div style="width:8px;height:8px;border-radius:50%;background:var(--orange)"></div><span style="font-size:10px;color:var(--muted)">Unidade 3</span></div>
+    </div>
+    <canvas id="chart-s2" height="160"></canvas>
+  </div>
+  <div id="s2-rec" class="card"></div>
+</div>
+
+<!-- ── TELA 3 — Benchmark ──────────────────────────────────────────────── -->
+<div class="screen" id="screen3">
+  <p class="muted" style="font-size:13px;margin-bottom:16px">Quais aparelhos priorizar ao abrir uma unidade nova?</p>
+  <div style="margin-bottom:14px">
+    <div class="label">Perfil do bairro</div>
+    <div class="pill-row" id="perfil-pills" style="margin-bottom:0">
+      <button class="pill-btn"        onclick="setFilter('perfil',this)">Alto</button>
+      <button class="pill-btn active" onclick="setFilter('perfil',this)">Médio</button>
+      <button class="pill-btn"        onclick="setFilter('perfil',this)">Popular</button>
+    </div>
+  </div>
+  <div style="margin-bottom:18px">
+    <div class="label">Tamanho da unidade</div>
+    <div class="pill-row" id="tamanho-pills" style="margin-bottom:0">
+      <button class="pill-btn"        onclick="setFilter('tamanho',this)">Grande</button>
+      <button class="pill-btn active" onclick="setFilter('tamanho',this)">Médio</button>
+      <button class="pill-btn"        onclick="setFilter('tamanho',this)">Pequeno</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="label" style="color:var(--green)">✅ Essenciais — top 5</div>
+    <div id="s3-essenciais"></div>
+  </div>
+  <div class="card">
+    <div class="label" style="color:var(--orange)">⭐ Recomendados</div>
+    <div id="s3-recomendados"></div>
+  </div>
+  <div class="card">
+    <div class="label" style="color:var(--muted)">○ Opcionais</div>
+    <div id="s3-opcionais"></div>
+  </div>
+  <p class="muted" style="font-size:11px;text-align:center">Baseado em histórico de utilização de unidades com perfil similar</p>
+</div>
+
+<!-- ── TELA 4 — Ocupação ───────────────────────────────────────────────── -->
+<div class="screen" id="screen4">
+  <div class="center-col" style="margin-bottom:20px">
+    <div class="ocp-circle">
+      <span style="font-size:36px">🟡</span>
+      <p style="font-weight:800;font-size:14px;color:var(--orange);margin:4px 0 0">Movimentada</p>
+    </div>
+    <p class="muted" style="font-size:12px" id="s4-time"></p>
+  </div>
+  <div class="card">
+    <div class="label">Esteiras</div>
+    <p class="muted" style="font-size:12px;margin-bottom:10px">3 de 5 esteiras ocupadas</p>
+    <div class="esteira-row">
+      <div style="text-align:center"><div class="esteira-box ocp">🔴</div><p class="muted" style="font-size:10px;margin-top:4px">E1</p></div>
+      <div style="text-align:center"><div class="esteira-box ocp">🔴</div><p class="muted" style="font-size:10px;margin-top:4px">E2</p></div>
+      <div style="text-align:center"><div class="esteira-box ocp">🔴</div><p class="muted" style="font-size:10px;margin-top:4px">E3</p></div>
+      <div style="text-align:center"><div class="esteira-box livre">🟢</div><p class="muted" style="font-size:10px;margin-top:4px">E4</p></div>
+      <div style="text-align:center"><div class="esteira-box livre">🟢</div><p class="muted" style="font-size:10px;margin-top:4px">E5</p></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="label">Aparelhos agora</div>
+    <div id="s4-aparelhos"></div>
+  </div>
+  <div class="card">
+    <div class="label">Tendência — próximas 2 horas</div>
+    <p style="color:var(--orange);font-size:12px;font-weight:700;margin-bottom:10px">📈 Pico esperado em ~45 min</p>
+    <canvas id="chart-s4" height="80"></canvas>
+  </div>
+</div>
+
+<!-- ── TELA 5 — Dados Reais ────────────────────────────────────────────── -->
+<div class="screen" id="screen5">
+  <p class="muted" style="font-size:13px;margin-bottom:14px">Águia Academia — Dados Reais</p>
+  <div class="date-nav">
+    <button class="date-nav-btn" onclick="navigateDate(-1)">‹</button>
+    <div class="date-display" id="date-display"></div>
+    <button class="date-nav-btn" id="btn-next" onclick="navigateDate(1)" disabled>›</button>
+    <button class="today-btn"   id="btn-today" onclick="goToday()">Hoje</button>
+  </div>
+  <div id="s5-content"><div class="loading">Carregando dados...</div></div>
+</div>
+
+<!-- ── BOTTOM NAV ─────────────────────────────────────────────────────── -->
+<nav class="bottom-nav">
+  <button class="nav-btn active" id="nav-home"    onclick="showScreen('home')">
+    <span class="nav-icon">⊞</span><span class="nav-label">Home</span>
+  </button>
+  <button class="nav-btn" id="nav-screen1" onclick="showScreen('screen1')">
+    <span class="nav-icon">⇄</span><span class="nav-label">Substituição</span>
+  </button>
+  <button class="nav-btn" id="nav-screen2" onclick="showScreen('screen2')">
+    <span class="nav-icon">↑</span><span class="nav-label">Validação</span>
+  </button>
+  <button class="nav-btn" id="nav-screen4" onclick="showScreen('screen4')">
+    <span class="nav-icon">◉</span><span class="nav-label">Ao Vivo</span>
+  </button>
+  <button class="nav-btn" id="nav-screen5" onclick="showScreen('screen5')">
+    <span class="nav-icon">▦</span><span class="nav-label">Dados Reais</span>
+  </button>
+</nav>
+
+<script>
+// ── Config ─────────────────────────────────────────────────────────────────
+const API = 'https://gymtracker-api-production-bc16.up.railway.app';
+
+const DEVICES = {
+  device_001: { name: 'Leg Press',  color: '#5DCAA5' },
+  device_002: { name: 'Pulley',     color: '#378ADD' },
+  device_003: { name: 'Peck Deck',  color: '#D85A30' },
+};
+
+// ── Charts ─────────────────────────────────────────────────────────────────
+const charts = {};
+function destroyChart(id) {
+  if (charts[id]) { charts[id].destroy(); delete charts[id]; }
+}
+
+// ── Strip clock ────────────────────────────────────────────────────────────
+function updateStrip() {
+  const now = new Date();
+  document.getElementById('strip-date').textContent = now.toLocaleDateString('pt-BR', {
+    weekday: 'long', day: '2-digit', month: 'long', year: 'numeric'
+  });
+  document.getElementById('strip-time').textContent =
+    'Atualizado ' + now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+}
+updateStrip();
+setInterval(updateStrip, 60000);
+
+// ── Navigation ─────────────────────────────────────────────────────────────
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+
+  const el = document.getElementById('screen-' + id) || document.getElementById(id);
+  if (el) el.classList.add('active');
+
+  const nav = document.getElementById('nav-' + id);
+  if (nav) nav.classList.add('active');
+
+  const isHome  = id === 'home';
+  const isReal  = id === 'screen5';
+  const isFuture = id === 'screen3';
+
+  document.getElementById('back-btn').style.display = isHome ? 'none' : 'block';
+  document.getElementById('sim-banner').style.display = isReal ? 'none' : 'block';
+  document.getElementById('sim-extra').style.display  = isFuture ? 'block' : 'none';
+
+  const badge = document.getElementById('header-badge');
+  badge.className = 'badge ' + (isReal ? 'badge-live' : 'badge-demo');
+  badge.textContent = isReal ? '● AO VIVO' : 'DEMO';
+
+  if (id === 'screen1') renderScreen1(30);
+  if (id === 'screen2') renderScreen2();
+  if (id === 'screen3') renderScreen3();
+  if (id === 'screen4') renderScreen4();
+  if (id === 'screen5') initScreen5();
+
+  window.scrollTo(0, 0);
+}
+
+function goHome() { showScreen('home'); }
+
+// ── Screen 1 — Substituição ────────────────────────────────────────────────
+const S1 = [
+  { name: 'Leg Press',      p: 74, dias: 0 },
+  { name: 'Supino Máquina', p: 68, dias: 0 },
+  { name: 'Pulley',         p: 61, dias: 1 },
+  { name: 'Esteira 1',      p: 55, dias: 0 },
+  { name: 'Esteira 2',      p: 48, dias: 2 },
+  { name: 'Crossover',      p: 31, dias: 3 },
+  { name: 'C. Extensora',   p: 18, dias: 5 },
+  { name: 'Voador',         p: 12, dias: 7 },
+];
+
+function setPeriod(period, btn) {
+  document.querySelectorAll('#period-pills .pill-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderScreen1(period);
+}
+
+function renderScreen1(period) {
+  const scale = period === 7 ? 0.85 : period === 90 ? 1.05 : 1;
+  const data = S1.map(d => ({ ...d, pct: Math.min(99, Math.round(d.p * scale)) }))
+                 .map(d => ({ ...d, abaixo: d.pct < 20 }));
+  const cands = data.filter(d => d.abaixo).length;
+
+  document.getElementById('s1-label').textContent = `Utilização por aparelho — ${period} dias`;
+  document.getElementById('s1-rec-title').textContent =
+    `${cands} aparelho${cands !== 1 ? 's' : ''} candidato${cands !== 1 ? 's' : ''} à substituição`;
+  document.getElementById('s1-rec-sub').textContent =
+    `Liberaria ~${cands * 4}–${cands * 5} m² para novos equipamentos`;
+
+  document.getElementById('s1-bars').innerHTML = data.map(d => {
+    const color = d.abaixo ? '#E53935' : d.pct > 55 ? '#5DCAA5' : '#D85A30';
+    return `
+      <div class="equip-row">
+        <div class="equip-header">
+          <span style="font-size:13px;color:${d.abaixo ? '#E53935' : 'var(--text)'};font-weight:${d.abaixo ? 700 : 500}">${d.name}</span>
+          <div style="display:flex;gap:10px;align-items:center">
+            ${d.dias > 0 ? `<span style="font-size:10px;color:var(--muted)">${d.dias}d sem uso</span>` : ''}
+            <span style="font-size:13px;font-weight:700;color:${d.abaixo ? '#E53935' : 'var(--text)'}">${d.pct}%</span>
+          </div>
+        </div>
+        <div class="bar-track">
+          <div class="bar-fill" style="width:${d.pct}%;background:${color}"></div>
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// ── Screen 2 — Validação ───────────────────────────────────────────────────
+const S2_DATA = {
+  hack: {
+    labels: ['S1','S2','S3','S4','S5','S6'],
+    u1: [8,22,41,55,60,63], u2: [5,18,38,44,48,50], u3: [12,28,52,61,67,70],
+    badge: 'Alta Aderência', badgeColor: '#5DCAA5',
+    rec: 'Hack Squat — aderência confirmada em 2 de 3 unidades piloto. Recomendado para expansão na rede.',
+    recClass: 'card card-accent-green',
+  },
+  smith: {
+    labels: ['S1','S2','S3'],
+    u1: [6,15,28], u2: [9,20,35], u3: [4,11,20],
+    badge: 'Em Observação', badgeColor: '#F5A623',
+    rec: 'Smith Machine — dados insuficientes. Monitorar por mais 2 semanas antes de decidir.',
+    recClass: 'card card-accent-amber',
+  },
+};
+
+function renderScreen2() {
+  const d = S2_DATA[document.getElementById('equip-select').value];
+  document.getElementById('s2-badge').textContent = d.badge;
+  document.getElementById('s2-badge').style.background = d.badgeColor;
+  const rec = document.getElementById('s2-rec');
+  rec.className = d.recClass;
+  rec.innerHTML = `<div class="label">Recomendação</div><p style="font-weight:700;font-size:15px;color:var(--text);margin:0">${d.rec}</p>`;
+
+  destroyChart('chart-s2');
+  charts['chart-s2'] = new Chart(document.getElementById('chart-s2').getContext('2d'), {
+    type: 'line',
+    data: {
+      labels: d.labels,
+      datasets: [
+        { data: d.u1, borderColor: '#5DCAA5', borderWidth: 2.5, tension: 0.3, pointRadius: 3, backgroundColor: 'transparent' },
+        { data: d.u2, borderColor: '#378ADD', borderWidth: 2.5, tension: 0.3, pointRadius: 3, backgroundColor: 'transparent' },
+        { data: d.u3, borderColor: '#D85A30', borderWidth: 2.5, tension: 0.3, pointRadius: 3, backgroundColor: 'transparent' },
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false }, tooltip: { mode: 'index' } },
+      scales: {
+        x: { grid: { color: '#F2F0EA' }, ticks: { font: { size: 11 }, color: '#888' } },
+        y: { grid: { color: '#F2F0EA' }, ticks: { font: { size: 11 }, color: '#888' } },
+      }
+    }
+  });
+}
+
+// ── Screen 3 — Benchmark ───────────────────────────────────────────────────
+function setFilter(group, btn) {
+  btn.closest('.pill-row').querySelectorAll('.pill-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function renderList(id, items, start, color) {
+  document.getElementById(id).innerHTML = items.map((a, i) => `
+    <div style="display:flex;align-items:center;gap:10px;padding:9px 0;${i < items.length - 1 ? 'border-bottom:1px solid var(--border)' : ''}">
+      <span style="font-weight:800;color:${color};font-size:12px;width:22px;text-align:right">#${start + i}</span>
+      <span style="font-size:14px;color:var(--text);font-weight:${start <= 5 ? 600 : 400}">${a}</span>
+    </div>`).join('');
+}
+
+function renderScreen3() {
+  renderList('s3-essenciais',   ['Leg Press','Supino Livre','Pulley','Esteira','Bicicleta'], 1,  '#5DCAA5');
+  renderList('s3-recomendados', ['Hack Squat','Smith Machine','Peck Deck','Remada','Crossover'], 6, '#D85A30');
+  renderList('s3-opcionais',    ['Voador','Cadeira Extensora','Leg Curl','Abdutora'], 11, '#888');
+}
+
+// ── Screen 4 — Ocupação ────────────────────────────────────────────────────
+const S4_AP = [
+  { name: 'Leg Press',     ativo: true,  color: '#5DCAA5' },
+  { name: 'Pulley',        ativo: true,  color: '#378ADD' },
+  { name: 'Smith Machine', ativo: true,  color: '#D85A30' },
+  { name: 'Supino Livre',  ativo: false, color: '#ccc'    },
+  { name: 'Crossover',     ativo: false, color: '#ccc'    },
+];
+
+function renderScreen4() {
+  document.getElementById('s4-time').textContent =
+    'Atualizado às ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+  document.getElementById('s4-aparelhos').innerHTML = S4_AP.map((a, i) => `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;${i < 4 ? 'border-bottom:1px solid var(--border)' : ''}">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="dot" style="background:${a.ativo ? a.color : '#DDD'}"></div>
+        <span style="font-size:14px;font-weight:${a.ativo ? 700 : 400};color:${a.ativo ? 'var(--text)' : 'var(--muted)'}">${a.name}</span>
+      </div>
+      <span style="font-size:12px;font-weight:700;color:${a.ativo ? a.color : 'var(--muted)'}">${a.ativo ? '● EM USO' : '○ Livre'}</span>
+    </div>`).join('');
+
+  destroyChart('chart-s4');
+  charts['chart-s4'] = new Chart(document.getElementById('chart-s4').getContext('2d'), {
+    type: 'bar',
+    data: {
+      labels: ['Agora', '+30min', '+1h', '+1h30'],
+      datasets: [{ data: [3, 5, 8, 6], backgroundColor: '#D85A30', borderRadius: 5 }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => `${c.raw} aparelhos` } } },
+      scales: {
+        x: { grid: { display: false }, ticks: { font: { size: 10 }, color: '#888' } },
+        y: { display: false },
+      }
+    }
+  });
+}
+
+// ── Screen 5 — Dados Reais ─────────────────────────────────────────────────
+function todayStr() { return new Date().toISOString().slice(0, 10); }
+let s5Date = todayStr();
+
+function parseBRT(ts) {
+  if (!ts) return null;
+  const s = (ts.includes('+') || ts.includes('Z')) ? ts : ts + '-03:00';
+  return new Date(s);
+}
+
+function fmtDur(s) { return s >= 60 ? `${Math.round(s / 60)}min` : `${s}s`; }
+
+function fmtDateDisplay(d) {
+  return new Date(d + 'T12:00:00').toLocaleDateString('pt-BR', {
+    weekday: 'short', day: '2-digit', month: '2-digit', year: '2-digit'
+  });
+}
+
+function updateDateNav() {
+  const isToday = s5Date === todayStr();
+  document.getElementById('date-display').textContent = fmtDateDisplay(s5Date);
+  document.getElementById('btn-next').disabled = isToday;
+  document.getElementById('btn-today').style.display = isToday ? 'none' : 'inline-block';
+}
+
+function navigateDate(dir) {
+  const d = new Date(s5Date + 'T12:00:00');
+  d.setDate(d.getDate() + dir);
+  s5Date = d.toISOString().slice(0, 10);
+  updateDateNav();
+  fetchAndRender();
+}
+
+function goToday() {
+  s5Date = todayStr();
+  updateDateNav();
+  fetchAndRender();
+}
+
+function initScreen5() {
+  s5Date = todayStr();
+  updateDateNav();
+  fetchAndRender();
+}
+
+async function fetchAndRender() {
+  document.getElementById('s5-content').innerHTML = '<div class="loading">Carregando dados...</div>';
+  destroyChart('chart-s5');
+  let sessions = [];
+  try {
+    const r = await fetch(`${API}/sessoes/dia?data=${s5Date}`);
+    sessions = await r.json();
+    if (!Array.isArray(sessions)) sessions = [];
+  } catch (e) { sessions = []; }
+  renderScreen5(sessions);
+}
+
+function renderScreen5(sessions) {
+  const valid = sessions.filter(s => (s.duracao_s || 0) >= 10);
+  const isToday = s5Date === todayStr();
+  const dateLabel = isToday ? 'Hoje' : fmtDateDisplay(s5Date);
+
+  const byDev = {};
+  valid.forEach(s => {
+    if (!byDev[s.device_id]) byDev[s.device_id] = { count: 0, total: 0 };
+    byDev[s.device_id].count++;
+    byDev[s.device_id].total += s.duracao_s || 0;
+  });
+
+  const hours = Array.from({ length: 24 }, (_, h) => ({
+    h: String(h).padStart(2, '0') + 'h',
+    n: valid.filter(s => { const d = parseBRT(s.inicio); return d && d.getHours() === h; }).length,
+  }));
+
+  const peak  = hours.reduce((a, b) => b.n > a.n ? b : a, hours[0]);
+  const avgDur = valid.length > 0
+    ? Math.round(valid.reduce((a, s) => a + (s.duracao_s || 0), 0) / valid.length)
+    : 0;
+
+  const devRows = Object.entries(DEVICES).map(([id, dev]) => {
+    const d = byDev[id] || { count: 0, total: 0 };
+    const avg = d.count > 0 ? Math.round(d.total / d.count) : 0;
+    return `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid var(--border)">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div class="dot" style="background:${dev.color}"></div>
+          <span style="font-weight:600;font-size:14px;color:var(--text)">${dev.name}</span>
+        </div>
+        <div style="text-align:right">
+          <p style="font-weight:800;font-size:15px;color:var(--text);margin:0">${d.count} sessões</p>
+          ${d.count > 0 ? `<p style="font-size:11px;color:var(--muted);margin:0">média ${fmtDur(avg)}</p>` : ''}
+        </div>
+      </div>`;
+  }).join('');
+
+  const lastRows = valid.slice(-10).reverse().map((s, i) => {
+    const dev = DEVICES[s.device_id];
+    const t   = parseBRT(s.inicio);
+    return `
+      <div style="display:flex;justify-content:space-between;padding:9px 0;${i < 9 ? 'border-bottom:1px solid var(--border)' : ''}">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="dot-sm" style="background:${dev ? dev.color : '#ccc'}"></div>
+          <span style="font-size:13px;color:var(--text)">${dev ? dev.name : s.device_id}</span>
+        </div>
+        <div style="text-align:right">
+          <p style="font-size:12px;font-weight:700;color:var(--text);margin:0">${t ? t.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : '—'}</p>
+          <p style="font-size:11px;color:var(--muted);margin:0">${fmtDur(s.duracao_s || 0)}</p>
+        </div>
+      </div>`;
+  }).join('');
+
+  document.getElementById('s5-content').innerHTML = `
+    <div class="kpi-grid">
+      <div class="card"><div class="label">Aparelhos</div><div class="big-val">${Object.keys(byDev).length}</div><div class="big-sub">monitorados</div></div>
+      <div class="card"><div class="label">Sessões hoje</div><div class="big-val">${valid.length}</div><div class="big-sub">${dateLabel}</div></div>
+      <div class="card"><div class="label">Horário de pico</div><div class="big-val" style="font-size:34px">${peak.n > 0 ? peak.h : '—'}</div><div class="big-sub">mais movimentado</div></div>
+      <div class="card"><div class="label">Duração média</div><div class="big-val" style="font-size:34px">${valid.length > 0 ? fmtDur(avgDur) : '—'}</div><div class="big-sub">por sessão</div></div>
+    </div>
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px">
+        <div><div class="label">Uso por horário</div><p class="muted" style="font-size:11px">Sessões válidas — ${dateLabel}</p></div>
+        <span style="font-weight:900;font-size:28px;color:var(--text)">${valid.length}</span>
+      </div>
+      <canvas id="chart-s5" height="120"></canvas>
+    </div>
+    <div class="card"><div class="label">Por aparelho</div>${devRows}</div>
+    ${valid.length > 0
+      ? `<div class="card"><div class="label">Últimas sessões</div>${lastRows}</div>`
+      : `<div class="card"><p class="muted" style="text-align:center;padding:20px 0">Nenhuma sessão registrada neste dia</p></div>`
+    }`;
+
+  setTimeout(() => {
+    const canvas = document.getElementById('chart-s5');
+    if (!canvas) return;
+    destroyChart('chart-s5');
+    charts['chart-s5'] = new Chart(canvas.getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: hours.map(h => h.h),
+        datasets: [{ data: hours.map(h => h.n), backgroundColor: '#D85A30', borderRadius: 4 }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => `${c.raw} sessões` } } },
+        scales: {
+          x: { grid: { display: false }, ticks: { font: { size: 9 }, color: '#888', maxTicksLimit: 12 } },
+          y: { grid: { color: '#F2F0EA' }, ticks: { font: { size: 9 }, color: '#888', precision: 0 } },
+        }
+      }
+    });
+  }, 50);
+}
+</script>
+</body>
+</html>
