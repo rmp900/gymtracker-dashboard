@@ -7,7 +7,7 @@ const DEVICE_NAMES  = { device_001: "Leg Press",  device_002: "Pulley",   device
 const DEVICE_COLORS = { device_001: "#5DCAA5",     device_002: "#378ADD",  device_003: "#D85A30",       device_005: "#8B5CF6" };
 
 // Devices excluídos do dashboard — apenas aparecem no diagnóstico
-const DEVICES_TESTE = new Set(["device_004", "device_006"]);
+const DEVICES_TESTE = new Set(["device_004", "device_006", "device_007", "device_008"]);
 
 const DURACAO_MAX_S = 3600; // padrão 1h
 const DURACAO_MAX_POR_DEVICE = { device_005: 14400 }; // esteira: até 4h é normal
