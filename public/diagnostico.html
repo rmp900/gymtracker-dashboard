@@ -113,7 +113,7 @@
   <div class="test-header">
     <div>
       <div class="test-title">🧪 Sessões dos Dispositivos em Teste</div>
-      <div class="test-subtitle">device_005 · device_006 (LoRa) · device_007 · device_008 — dados brutos, heartbeats incluídos</div>
+      <div class="test-subtitle">device_006 (LoRa) · device_007 · device_008 — dados brutos, heartbeats incluídos</div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
       <div class="date-nav">
@@ -139,6 +139,7 @@ var PROD_DEVICES = {
   device_001: 'Leg Press',
   device_002: 'Pulley',
   device_003: 'Supino Máquina',
+  device_005: 'Esteira B',
 };
 
 // Cards de teste (com heartbeat)
@@ -237,7 +238,7 @@ function renderHeartbeat(cfg, ultimoContato) {
 // ── Cards ──────────────────────────────────────────────────────────────────
 
 function batHtml(pct) {
-  if (pct !== null && pct !== undefined && pct > 0) {
+  if (pct !== null && pct !== undefined && pct >= 0) {
     return '<div class="bat-bar-bg"><div class="bat-bar-fill" style="width:' + pct + '%;background:' + batCor(pct) + '"></div></div><div class="bat-value" style="color:' + batCor(pct) + '">' + pct + '%</div>';
   }
   return '<div class="no-data">sem dados (firmware sem leitura de bateria)</div>';
