@@ -2,7 +2,7 @@
 
 > Documento normativo de arquitetura. Leia antes de qualquer sessão de desenvolvimento.
 > Decisões aqui registradas não devem ser revertidas sem justificativa explícita.
-> Última atualização: 14 de Junho 2026
+> Última atualização: 23 de Junho 2026
 
 ---
 
@@ -30,7 +30,7 @@ SaaS B2B IoT para academias. Dispositivos ESP32 instalados em equipamentos detec
 - **Repo:** github.com/rmp900/gymtracker-dashboard
 - **URL produção:** gymtracker-dashboard.vercel.app
 - **View pública (alunos):** gymtracker-dashboard.vercel.app/status.html (auto-refresh 30s, sem login)
-- **Página de diagnóstico:** gymtracker-dashboard.vercel.app/diagnostico.html (device_004, não produção)
+- **Página de diagnóstico:** gymtracker-dashboard.vercel.app/diagnostico.html (device_006 e device_008 em teste; demais em produção)
 
 ### Firmware
 - **Plataforma atual (campo):** ESP32 WROOM DevKit V1
@@ -77,16 +77,19 @@ temp_c        FLOAT     -- temperatura interna do ESP32 (diagnóstico)
 
 ### Mapeamento de dispositivos
 
-| device_id  | Tipo       | Aparelho          | Músculo | Cor       | Status      |
-|------------|------------|-------------------|---------|-----------|-------------|
-| device_001 | Produção   | Leg Press         | Perna   | #5DCAA5   | Campo       |
-| device_002 | Produção   | Pulley            | Costas  | #378ADD   | Campo       |
-| device_003 | Produção   | Peck Deck         | Peito   | #D85A30   | Campo       |
-| device_004 | Diagnóstico| Protótipo bateria | —       | —         | Casa/lab    |
-| device_005 | Produção   | Esteira           | Cardio  | —         | Instalação pendente |
+| device_id  | Tipo     | Aparelho           | Músculo | Cor          | Status    |
+|------------|----------|--------------------|---------|--------------|-----------|
+| device_001 | Produção | Leg Press          | Perna   | #5DCAA5      | Campo     |
+| device_002 | Produção | Pulley Remada      | Costas  | #378ADD      | Campo     |
+| device_003 | Produção | Supino Máquina     | Peito   | #D85A30      | Campo     |
+| device_004 | Produção | Esteira B          | Cardio  | #9B6DD8      | Campo — AC, janela deslizante (sem deep sleep) |
+| device_005 | Produção | Pulley Alto        | Costas  | #2563C9      | Campo     |
+| device_006 | Teste    | LoRa               | —       | —            | Lab/teste |
+| device_007 | Produção | Cadeira Extensora  | Perna   | #3DA882      | Campo     |
+| device_008 | Teste    | Demo investidores  | —       | —            | Lab/teste |
 
-**PRODUCTION_DEVICES** (constante no frontend): `['device_001', 'device_002', 'device_003']`
-device_004 aparece SOMENTE em diagnostico.html, nunca no dashboard principal.
+**PRODUCTION_DEVICES** (constante no frontend): `['device_001', 'device_002', 'device_003', 'device_004', 'device_005', 'device_007']`
+**DEVICES_TESTE** (constante no frontend): `['device_006', 'device_008']` — aparecem SOMENTE em diagnostico.html, nunca no dashboard principal.
 
 ### Evolução planejada — multi-tenancy (bloqueante para Smart Fit)
 
@@ -150,7 +153,9 @@ Sem `wakeCount % N` — essa lógica causou bug após fim de semana longo (wakeC
 
 > ⚠️ Carregador atual não corta em 4.2V — baterias chegam a ~4.89V. Verificar tensão com multímetro antes de cada uso em campo enquanto este carregador for usado.
 
-### Firmware device_005 (esteira) — arquitetura diferente
+### Firmware device_004 (esteira) — arquitetura diferente
+
+> 📝 23/06/2026: esta arquitetura pertencia ao device_005 antes do remapeamento físico de devices na academia. Agora é o device_004. device_005 passou a ser um device padrão (Pulley Alto) — WiFi com deep sleep, igual aos demais.
 
 Esteira não dorme. É alimentada por AC (HLK-PM01 → CN1 JST). Sem deep sleep, sem gestão de bateria.
 
@@ -261,9 +266,11 @@ R$50/dispositivo é o piso. Não negociar abaixo disso.
 
 5. **Firmware validado em casa (MENDES 148) antes de qualquer deploy em campo.** Sem exceção.
 
-6. **device_004 nunca aparece no dashboard de produção.** Apenas em diagnostico.html.
+6. **device_006 e device_008 (DEVICES_TESTE) nunca aparecem no dashboard de produção.** Apenas em diagnostico.html. device_004 deixou de ser device de laboratório — remapeado para produção (ver nota abaixo).
 
-7. **PRODUCTION_DEVICES = ['device_001', 'device_002', 'device_003'].** Qualquer novo device de produção requer atualização explícita desta constante.
+7. **PRODUCTION_DEVICES = ['device_001', 'device_002', 'device_003', 'device_004', 'device_005', 'device_007'].** Qualquer novo device de produção requer atualização explícita desta constante.
+
+> 📝 **23/06/2026 — Remapeamento físico de devices (múltiplas camadas, sem migração retroativa).** device_004 (antes protótipo de bateria em lab) passou a ser a Esteira B em produção; device_005 (antes Supino/Esteira) passou a ser Pulley Alto. Esses IDs já passaram por mais de um remapeamento físico — por exemplo, device_003 já foi Supino → Pulley Alto → Supino (mapeamento atual), e device_005 já foi Supino/Esteira → Pulley Alto. **Sessões registradas antes de 23/06/2026 podem corresponder a qualquer mapeamento anterior do device_id — não há migração retroativa de dados; a tabela da seção 3 reflete apenas o mapeamento vigente a partir desta data.** Justificativa: remapeamento físico dos devices na academia, decidido em sessão de organização do front-end.
 
 8. **Multi-tenancy via `academia_id` antes de qualquer segundo cliente.**
 
@@ -277,7 +284,7 @@ R$50/dispositivo é o piso. Não negociar abaixo disso.
 - [ ] Endpoint de diagnóstico: alerta quando device para de enviar por >X horas
 
 ### Hardware imediato
-- [ ] Instalar device_005 (esteira) na Águia Academia esta semana
+- [ ] Instalar device_004 (esteira) na Águia Academia esta semana
 - [ ] Investigar PCB com empresa local — diagnosticar causa da falha (suspeita: GPIO0/boot button)
 - [ ] Teste de autonomia LoRa vs WiFi (dual 18650 paralelo)
 

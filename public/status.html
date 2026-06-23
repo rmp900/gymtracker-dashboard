@@ -76,10 +76,16 @@
 const DEVICES=[
   {id:'device_001',name:'Leg Press',muscle:'Perna',
    iconPath:'M12 5v14M5 12l7-7 7 7'},
-  {id:'device_002',name:'Pulley',muscle:'Costas',
+  {id:'device_002',name:'Pulley Remada',muscle:'Costas',
    iconPath:'M12 19V5M5 12l7 7 7-7'},
   {id:'device_003',name:'Supino Máquina',muscle:'Peito',
    iconPath:'M5 12h14M12 5l7 7-7 7'},
+  {id:'device_004',name:'Esteira B',muscle:'Cardio',
+   iconPath:'M2 12h4l2-8 4 16 2-8h6'},
+  {id:'device_005',name:'Pulley Alto',muscle:'Costas',
+   iconPath:'M12 5v14M19 12l-7 7-7-7'},
+  {id:'device_007',name:'Cadeira Extensora',muscle:'Perna',
+   iconPath:'M8 4v8l5 8M8 12h6'},
 ];
 const FERIADOS=['01-01','21-04','01-05','07-09','12-10','02-11','15-11','25-12','20-11','20-04'];
 const HOR={
@@ -142,16 +148,24 @@ function figSVG(type){
 }
 
 function render(sessoes){
+  // heartbeats (duracao 0) nunca contam no ao vivo — só aparecem no diagnóstico
+  sessoes=sessoes.filter(s=>{
+    const dur=s.duracao_segundos!==undefined?s.duracao_segundos:s.duracao;
+    return dur!==0;
+  });
   const agora=new Date();
   const aberto=isAberto(agora);
   const now=agora.getTime();
   const t20=20*60*1000,t60=60*60*1000;
   const s20=DEVICES.map(d=>sessoes.filter(s=>s.device_id===d.id&&(now-new Date(s.inicio).getTime())<t20).length);
   const s60=DEVICES.map(d=>sessoes.filter(s=>s.device_id===d.id&&(now-new Date(s.inicio).getTime())<t60).length);
-  const maxS=Math.max(...s60,1);
-  const muscleData=DEVICES.map((d,i)=>({name:d.muscle,count:s60[i],pct:Math.round(s60[i]/maxS*100)}))
+  const muscleGroups={};
+  DEVICES.forEach((d,i)=>{ muscleGroups[d.muscle]=(muscleGroups[d.muscle]||0)+s60[i]; });
+  const maxMuscle=Math.max(...Object.values(muscleGroups),1);
+  const muscleData=Object.keys(muscleGroups)
+    .map(name=>({name,count:muscleGroups[name],pct:Math.round(muscleGroups[name]/maxMuscle*100)}))
     .sort((a,b)=>b.count-a.count);
-  const ranks=['🥇','🥈','🥉'];
+  const ranks=['🥇','🥈','🥉','🏅'];
   const st=lotacao(s20);
   const hora=agora.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
 

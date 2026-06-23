@@ -3,14 +3,14 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieCha
 
 const API_BASE = "https://gymtracker-api-production-bc16.up.railway.app";
 
-const DEVICE_NAMES  = { device_001: "Leg Press",  device_002: "Pulley",   device_003: "Supino Máquina", device_005: "Esteira B" };
-const DEVICE_COLORS = { device_001: "#5DCAA5",     device_002: "#378ADD",  device_003: "#D85A30",       device_005: "#8B5CF6" };
+const DEVICE_NAMES  = { device_001: "Leg Press",  device_002: "Pulley Remada", device_003: "Supino Máquina", device_004: "Esteira B",  device_005: "Pulley Alto", device_007: "Cadeira Extensora" };
+const DEVICE_COLORS = { device_001: "#5DCAA5",     device_002: "#378ADD",      device_003: "#D85A30",       device_004: "#9B6DD8",   device_005: "#2563C9",    device_007: "#3DA882" };
 
 // Devices excluídos do dashboard — apenas aparecem no diagnóstico
-const DEVICES_TESTE = new Set(["device_004", "device_006", "device_007", "device_008"]);
+const DEVICES_TESTE = new Set(["device_006", "device_008"]);
 
 const DURACAO_MAX_S = 3600; // padrão 1h
-const DURACAO_MAX_POR_DEVICE = { device_005: 14400 }; // esteira: até 4h é normal
+const DURACAO_MAX_POR_DEVICE = { device_004: 14400 }; // esteira: até 4h é normal
 const O = "#ea580c", OL = "#fff7ed", OD = "#9a3412", BG = "#f5f4f0";
 const WHITE = "#ffffff", DARK = "#1c1917", MID = "#78716c", BORDER = "#e7e5e4";
 
@@ -22,15 +22,16 @@ function parseSession(s) {
   const deviceId = s.device_id || s.deviceId || s.device || "";
   const start = s.inicio || s.start_time || s.started_at || s.created_at;
   const end   = s.fim   || s.end_time   || s.ended_at;
-  let dur = s.duracao_segundos || s.duracao || s.duration;
-  if (!dur && start && end) dur = Math.round((new Date(end) - new Date(start)) / 1000);
+  // duracao pode ser 0 (heartbeat) — não usar || aqui, senão 0 vira "ausente"
+  let dur = [s.duracao_segundos, s.duracao, s.duration].find(v => v !== null && v !== undefined);
+  if (dur === undefined && start && end) dur = Math.round((new Date(end) - new Date(start)) / 1000);
   const tz = (str) => str && (str.includes("+") || str.endsWith("Z")) ? "" : "-03:00";
   return {
     id: s.id, deviceId,
     deviceName: DEVICE_NAMES[deviceId] || deviceId || "Aparelho",
     start: start ? new Date(start + tz(start)) : null,
     end:   end   ? new Date(end   + tz(end))   : null,
-    duracao: dur ? Math.round(Number(dur)) : null,
+    duracao: dur !== undefined && dur !== null ? Math.round(Number(dur)) : null,
   };
 }
 
@@ -46,7 +47,8 @@ function deduplicar(arr) {
 }
 
 function limpar(raw) {
-  const parsed = raw.map(parseSession).filter(s => !DEVICES_TESTE.has(s.deviceId));
+  // heartbeats (duracao === 0) nunca entram em nenhuma contagem do dashboard — só no diagnóstico
+  const parsed = raw.map(parseSession).filter(s => !DEVICES_TESTE.has(s.deviceId) && s.duracao !== 0);
   const dedup = deduplicar(parsed);
   return {
     normais:  dedup.filter(s => !s.duracao || s.duracao <= (DURACAO_MAX_POR_DEVICE[s.deviceId] || DURACAO_MAX_S)),
@@ -314,7 +316,7 @@ export default function GymTracker() {
         )}
 
         <div className="gt-row fade-up" style={{ marginBottom: 20 }}>
-          <StatCard label="Aparelhos" value={4} sub="monitorados" />
+          <StatCard label="Aparelhos" value={Object.keys(DEVICE_NAMES).length} sub="monitorados" />
           <StatCard label={isToday(selectedDate) ? "Sessões hoje" : "Sessões no dia"} value={loading ? "—" : stats.total} sub={fmtDateLabel(selectedDate)} />
           <StatCard label="Horário de pico" value={stats.horarioPico} sub="mais movimentado" />
           <StatCard label="Duração média" value={stats.duracaoMedia ? fmtDur(stats.duracaoMedia) : "—"} sub="por sessão" />

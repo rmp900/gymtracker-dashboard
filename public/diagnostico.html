@@ -105,15 +105,15 @@
 <div id="prod-section" style="display:none">
   <div class="section-label">Devices de Produção</div>
   <div class="grid" id="grid-prod"></div>
-  <div class="section-label" style="margin-top:32px">Devices em Teste</div>
+  <div class="section-label" style="margin-top:32px">Monitoramento de Heartbeat</div>
   <div class="grid" id="grid-teste"></div>
 </div>
 
 <div class="test-section" id="test-section" style="display:none">
   <div class="test-header">
     <div>
-      <div class="test-title">🧪 Sessões dos Dispositivos em Teste</div>
-      <div class="test-subtitle">device_006 (LoRa) · device_007 · device_008 — dados brutos, heartbeats incluídos</div>
+      <div class="test-title">📋 Sessões Brutas — Todos os Dispositivos</div>
+      <div class="test-subtitle">device_001 a device_008 — dados brutos, heartbeats incluídos</div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
       <div class="date-nav">
@@ -134,30 +134,39 @@
 <script>
 var API = 'https://gymtracker-api-production-bc16.up.railway.app';
 
-// Cards de produção (só hardware info, sem heartbeat)
+// Cards de produção (hardware info, sem heartbeat — dispositivos sem monitoramento de bateria/sono)
 var PROD_DEVICES = {
   device_001: 'Leg Press',
-  device_002: 'Pulley',
+  device_002: 'Pulley Remada',
   device_003: 'Supino Máquina',
-  device_005: 'Esteira B',
+  device_004: 'Esteira B',
+  device_005: 'Pulley Alto',
 };
 
-// Cards de teste (com heartbeat)
+// Cards com heartbeat + hibernação (hardware com bateria/deep sleep — independe de status de produção no dashboard)
 var TESTE_CARD_DEVICES = {
   device_006: { nome: 'LoRa — Device 006', isLora: true,  hbMin: 5,  hibernacao: false },
-  device_007: { nome: 'Device 007',        isLora: false, hbMin: 70, hibernacao: true  },
+  device_007: { nome: 'Cadeira Extensora — Device 007', isLora: false, hbMin: 70, hibernacao: true  },
   device_008: { nome: 'Device 008',        isLora: false, hbMin: 70, hibernacao: true  },
 };
 
-// Tabela de sessões de teste
+// Tabela de sessões brutas — todos os dispositivos (001 a 008), heartbeats incluídos
 var TESTE_TABLE_DEVICES = {
-  device_005: 'Esteira B',
+  device_001: 'Leg Press',
+  device_002: 'Pulley Remada',
+  device_003: 'Supino Máquina',
+  device_004: 'Esteira B',
+  device_005: 'Pulley Alto',
   device_006: 'LoRa — Device 006',
-  device_007: 'Device 007',
+  device_007: 'Cadeira Extensora — Device 007',
   device_008: 'Device 008',
 };
 
-var LIMITE_ANOMALIA_TESTE = { device_005: 14400, device_006: 3600, device_007: 3600, device_008: 3600 };
+var LIMITE_ANOMALIA_TESTE = {
+  device_001: 3600, device_002: 3600, device_003: 3600,
+  device_004: 14400, device_005: 3600,
+  device_006: 3600, device_007: 3600, device_008: 3600,
+};
 
 function parseBRT(str) {
   if (!str) return null;
