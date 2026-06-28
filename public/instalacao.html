@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GymTracker — Instalação</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #F5F5F0;
+      color: #1a1a1a;
+      min-height: 100vh;
+      padding: 24px 16px 48px;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px;
+      margin-bottom: 24px;
+      max-width: 960px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    h1 { font-size: 1.3rem; font-weight: 700; }
+
+    .header-controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+    select {
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: .85rem;
+      font-weight: 600;
+      color: #1a1a1a;
+      cursor: pointer;
+    }
+
+    button.btn-reset {
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 8px 14px;
+      font-size: .8rem;
+      font-weight: 600;
+      color: #555;
+      cursor: pointer;
+    }
+    button.btn-reset:hover { border-color: #D85A30; color: #D85A30; }
+
+    .container { max-width: 960px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+
+    .status-card {
+      width: 100%;
+      border-radius: 14px;
+      padding: 28px 20px;
+      text-align: center;
+      font-size: 1.3rem;
+      font-weight: 800;
+      letter-spacing: .02em;
+      color: #fff;
+      transition: background .2s ease;
+    }
+    .status-card.dispara { background: #2e8b57; }
+    .status-card.repouso { background: #D85A30; }
+    .status-card.vazio { background: #999; }
+
+    .row-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+    @media (max-width: 700px) { .row-cards { grid-template-columns: repeat(2, 1fr); } }
+
+    .card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 16px;
+      box-shadow: 0 1px 3px rgba(0,0,0,.06);
+    }
+    .card-label { font-size: .7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #888; margin-bottom: 6px; }
+    .card-value { font-size: 1.6rem; font-weight: 800; color: #1a1a1a; }
+    .card-value.orange { color: #D85A30; }
+
+    .chart-card { background: #fff; border-radius: 12px; padding: 18px; }
+    .chart-card .card-label { margin-bottom: 12px; }
+    canvas { width: 100%; height: 260px; display: block; }
+
+    .ref-card { background: #fff; border-radius: 12px; padding: 18px; }
+    .ref-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #eee; font-size: .88rem; }
+    .ref-row:last-child { border-bottom: none; }
+    .ref-row span:first-child { color: #888; }
+    .ref-row span:last-child { font-weight: 700; }
+
+    .empty-msg {
+      text-align: center;
+      color: #999;
+      padding: 60px 20px;
+      font-size: 1rem;
+      background: #fff;
+      border-radius: 12px;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>GymTracker — Instalação</h1>
+  <div class="header-controls">
+    <select id="device-select">
+      <option value="device_001">device_001 (Leg Press)</option>
+      <option value="device_002">device_002 (Pulley Remada)</option>
+      <option value="device_003">device_003 (Supino Máquina)</option>
+      <option value="device_004">device_004 (Esteira B)</option>
+      <option value="device_005">device_005 (Pulley Alto)</option>
+      <option value="device_006">device_006 (LoRa — Device 006)</option>
+      <option value="device_007">device_007 (Cadeira Extensora)</option>
+      <option value="device_008">device_008 (Teste Lab)</option>
+    </select>
+    <button class="btn-reset" id="btn-reset">Resetar histórico</button>
+  </div>
+</header>
+
+<div class="container">
+
+  <div id="status-card" class="status-card vazio">Aguardando leituras do device...</div>
+
+  <div id="metrics-section" style="display:none">
+    <div class="row-cards">
+      <div class="card">
+        <div class="card-label">Magnitude Atual</div>
+        <div class="card-value" id="val-magnitude">—</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Delta Atual</div>
+        <div class="card-value orange" id="val-delta">—</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Mínimo Histórico</div>
+        <div class="card-value" id="val-magmin">—</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Máximo Histórico</div>
+        <div class="card-value" id="val-magmax">—</div>
+      </div>
+    </div>
+  </div>
+
+  <div id="chart-section" class="chart-card" style="display:none">
+    <div class="card-label">Magnitude — últimas 50 leituras</div>
+    <canvas id="chart" width="900" height="260"></canvas>
+  </div>
+
+  <div id="ref-section" class="ref-card" style="display:none">
+    <div class="ref-row"><span>Baseline configurado</span><span id="ref-baseline">—</span></div>
+    <div class="ref-row"><span>Delta threshold</span><span>2000</span></div>
+    <div class="ref-row"><span>Último envio</span><span id="ref-ultimo">—</span></div>
+  </div>
+
+</div>
+
+<script>
+var API = 'https://gymtracker-api-production-bc16.up.railway.app';
+var POLL_MS = 500;
+var pollTimer = null;
+
+function parseBRT(str) {
+  if (!str) return null;
+  if (/Z$|[+-]\d{2}:\d{2}$/.test(str)) return new Date(str);
+  return new Date(str + '-03:00');
+}
+
+function fmtHora(str) {
+  var d = parseBRT(str);
+  if (!d || isNaN(d.getTime())) return '—';
+  return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
+
+function desenharGrafico(leituras) {
+  var canvas = document.getElementById('chart');
+  var ctx = canvas.getContext('2d');
+  var w = canvas.clientWidth || canvas.width;
+  var h = canvas.clientHeight || canvas.height;
+  canvas.width = w;
+  canvas.height = h;
+  ctx.clearRect(0, 0, w, h);
+
+  if (!leituras.length) return;
+
+  // leituras vem em ordem DESC (mais recente primeiro) — inverter para cronológica
+  var ordenado = leituras.slice().reverse();
+
+  var ultima = leituras[0];
+  var magMin = ultima.mag_min;
+  var magMax = ultima.mag_max;
+  var yMin = magMin - 500;
+  var yMax = magMax + 500;
+  var baseline = ultima.baseline;
+
+  var padL = 50, padR = 16, padT = 12, padB = 24;
+  var plotW = w - padL - padR;
+  var plotH = h - padT - padB;
+
+  function yToPx(v) {
+    var t = (v - yMin) / (yMax - yMin);
+    return padT + plotH - t * plotH;
+  }
+  function xToPx(i, n) {
+    return padL + (n <= 1 ? plotW / 2 : (i / (n - 1)) * plotW);
+  }
+
+  // eixo Y — labels
+  ctx.strokeStyle = '#e5e5e0';
+  ctx.fillStyle = '#999';
+  ctx.font = '11px sans-serif';
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'middle';
+  var steps = 4;
+  for (var s = 0; s <= steps; s++) {
+    var val = yMin + (s / steps) * (yMax - yMin);
+    var py = yToPx(val);
+    ctx.beginPath();
+    ctx.moveTo(padL, py);
+    ctx.lineTo(w - padR, py);
+    ctx.stroke();
+    ctx.fillText(Math.round(val), padL - 8, py);
+  }
+
+  // linha baseline (tracejada)
+  if (baseline !== null && baseline !== undefined) {
+    var pyB = yToPx(baseline);
+    ctx.save();
+    ctx.setLineDash([6, 5]);
+    ctx.strokeStyle = '#888';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(padL, pyB);
+    ctx.lineTo(w - padR, pyB);
+    ctx.stroke();
+    ctx.restore();
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#888';
+    ctx.fillText('baseline', w - padR - 60, pyB - 6);
+  }
+
+  // linha magnitude (laranja)
+  ctx.strokeStyle = '#D85A30';
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ordenado.forEach(function(l, i) {
+    var px = xToPx(i, ordenado.length);
+    var py = yToPx(l.magnitude);
+    if (i === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+  });
+  ctx.stroke();
+
+  // eixo X — labels (início, meio, fim)
+  ctx.fillStyle = '#999';
+  ctx.font = '10px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+  [0, Math.floor((ordenado.length - 1) / 2), ordenado.length - 1].forEach(function(idx) {
+    if (idx < 0 || idx >= ordenado.length) return;
+    var px = xToPx(idx, ordenado.length);
+    ctx.fillText(fmtHora(ordenado[idx].criado_em), px, h - padB + 6);
+  });
+}
+
+function renderizar(leituras) {
+  if (!leituras.length) {
+    document.getElementById('status-card').className = 'status-card vazio';
+    document.getElementById('status-card').textContent = 'Aguardando leituras do device...';
+    document.getElementById('metrics-section').style.display = 'none';
+    document.getElementById('chart-section').style.display = 'none';
+    document.getElementById('ref-section').style.display = 'none';
+    return;
+  }
+
+  var ultima = leituras[0];
+
+  var statusEl = document.getElementById('status-card');
+  if (ultima.dispara) {
+    statusEl.className = 'status-card dispara';
+    statusEl.textContent = 'DISPARARIA — MOVIMENTO DETECTADO';
+  } else {
+    statusEl.className = 'status-card repouso';
+    statusEl.textContent = 'NÃO DISPARARIA — REPOUSO';
+  }
+
+  document.getElementById('metrics-section').style.display = 'block';
+  document.getElementById('val-magnitude').textContent = ultima.magnitude;
+  document.getElementById('val-delta').textContent = ultima.delta;
+  document.getElementById('val-magmin').textContent = ultima.mag_min;
+  document.getElementById('val-magmax').textContent = ultima.mag_max;
+
+  document.getElementById('chart-section').style.display = 'block';
+  desenharGrafico(leituras);
+
+  document.getElementById('ref-section').style.display = 'block';
+  document.getElementById('ref-baseline').textContent = ultima.baseline;
+  document.getElementById('ref-ultimo').textContent = fmtHora(ultima.criado_em);
+}
+
+function poll() {
+  var deviceId = document.getElementById('device-select').value;
+  fetch(API + '/diagnostico/leituras?device_id=' + encodeURIComponent(deviceId))
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      renderizar(Array.isArray(data) ? data : []);
+    })
+    .catch(function() { /* mantém último estado em caso de erro de rede pontual */ });
+}
+
+document.getElementById('device-select').addEventListener('change', function() {
+  renderizar([]);
+  poll();
+});
+
+document.getElementById('btn-reset').addEventListener('click', function() {
+  renderizar([]);
+});
+
+poll();
+pollTimer = setInterval(poll, POLL_MS);
+</script>
+</body>
+</html>
