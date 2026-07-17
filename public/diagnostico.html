@@ -102,11 +102,9 @@
 <div id="loading">Carregando...</div>
 <div id="error-msg"></div>
 
-<div id="prod-section" style="display:none">
-  <div class="section-label">Devices de Produção</div>
-  <div class="grid" id="grid-prod"></div>
-  <div class="section-label" style="margin-top:32px">Monitoramento de Heartbeat</div>
-  <div class="grid" id="grid-teste"></div>
+<div id="devices-section" style="display:none">
+  <div class="section-label">Dispositivos</div>
+  <div class="grid" id="grid-devices"></div>
 </div>
 
 <div class="test-section" id="test-section" style="display:none">
@@ -134,20 +132,18 @@
 <script>
 var API = 'https://gymtracker-api-production-bc16.up.railway.app';
 
-// Cards de produção (hardware info, sem heartbeat — dispositivos sem monitoramento de bateria/sono)
-var PROD_DEVICES = {
-  device_001: 'Leg Press',
-  device_002: 'Pulley Remada',
-  device_003: 'Supino Máquina',
-  device_004: 'Esteira B',
-  device_005: 'Pulley Alto',
-};
-
-// Cards com heartbeat + hibernação (hardware com bateria/deep sleep — independe de status de produção no dashboard)
-var TESTE_CARD_DEVICES = {
-  device_006: { nome: 'LoRa — Device 006', isLora: true,  hbMin: 5,  hibernacao: false },
-  device_007: { nome: 'Cadeira Extensora — Device 007', isLora: false, hbMin: 70, hibernacao: true  },
-  device_008: { nome: 'Device 008',        isLora: false, hbMin: 70, hibernacao: true  },
+// Cards de dispositivos — todos com heartbeat. Mesmo perfil (bateria + deep sleep,
+// hiberna 00h-06h) exceto o LoRa, que não hiberna e tem cadência de check-in mais curta.
+var DEVICES = {
+  device_001: { nome: 'Leg Press',          isLora: false, hbMin: 70, hibernacao: true  },
+  device_002: { nome: 'Pulley Remada',      isLora: false, hbMin: 70, hibernacao: true  },
+  device_003: { nome: 'Supino Máquina',     isLora: false, hbMin: 70, hibernacao: true  },
+  device_004: { nome: 'Esteira B',          isLora: false, hbMin: 70, hibernacao: true  },
+  device_005: { nome: 'Pulley Alto',        isLora: false, hbMin: 70, hibernacao: true  },
+  device_006: { nome: 'LoRa — Device 006',  isLora: true,  hbMin: 5,  hibernacao: false },
+  device_007: { nome: 'Cadeira Extensora — Device 007', isLora: false, hbMin: 70, hibernacao: true },
+  device_008: { nome: 'Device 008',         isLora: false, hbMin: 70, hibernacao: true  },
+  device_009: { nome: 'Esteira A',          isLora: false, hbMin: 70, hibernacao: false },
 };
 
 // Tabela de sessões brutas — todos os dispositivos (001 a 008), heartbeats incluídos
@@ -160,12 +156,13 @@ var TESTE_TABLE_DEVICES = {
   device_006: 'LoRa — Device 006',
   device_007: 'Cadeira Extensora — Device 007',
   device_008: 'Device 008',
+  device_009: 'Esteira A',
 };
 
 var LIMITE_ANOMALIA_TESTE = {
   device_001: 3600, device_002: 3600, device_003: 3600,
   device_004: 14400, device_005: 3600,
-  device_006: 3600, device_007: 3600, device_008: 3600,
+  device_006: 3600, device_007: 3600, device_008: 3600, device_009: 14400,
 };
 
 function parseBRT(str) {
@@ -230,7 +227,7 @@ function renderHeartbeat(cfg, ultimoContato) {
   var diffMin = (Date.now() - d) / 60000;
   var h = horaBRT();
 
-  // Hibernação (007 e 008 das 00h às 06h)
+  // Hibernação (todos exceto LoRa, das 00h às 06h)
   if (cfg.hibernacao && h >= 0 && h < 6) {
     return '<div class="heartbeat-row"><span class="heart hibernate">🐻</span><div><div class="heart-label hibernate">Hibernando</div><div class="heart-sub">Janela 00h–06h · acorda às 06h</div></div></div>';
   }
@@ -263,9 +260,7 @@ function rssiHtml(rssi, label) {
 }
 
 function metricsHtml(d, rssiLabel) {
-  var wsmCls = d.wakes_sem_mov > 50 ? 'warn' : '';
-  var bufCls = d.buffer_fill > 18 ? 'danger' : d.buffer_fill > 10 ? 'warn' : '';
-  var tCls   = tempCls(d.temp_c);
+  var tCls = tempCls(d.temp_c);
   return '<div class="metrics">'
     + '<div><div class="metric-label">🔋 Bateria</div>' + batHtml(d.bat_pct) + '</div>'
     + '<div class="divider"></div>'
@@ -275,27 +270,11 @@ function metricsHtml(d, rssiLabel) {
     + '<div class="row-metric"><span class="val ' + tCls + '">' + na(d.temp_c, ' °C') + '</span>'
     + (d.temp_c > 80 ? '<span class="danger">⚠️ Superaquecimento</span>' : d.temp_c > 65 ? '<span class="warn">Elevada</span>' : d.temp_c ? '<span class="ok">Normal</span>' : '')
     + '</div><div class="no-data" style="margin-top:3px">Temperatura interna do ESP32 — não representa o ambiente</div></div>'
-    + '<div class="divider"></div>'
-    + '<div class="row-metric"><span>Wakes sem movimento</span><span class="val ' + wsmCls + '">' + na(d.wakes_sem_mov) + '</span></div>'
-    + '<div class="row-metric"><span>Buffer (sessões pendentes)</span><span class="val ' + bufCls + '">' + na(d.buffer_fill, ' / 20') + '</span></div>'
     + '</div>';
 }
 
-function renderProdCard(d) {
-  var nome  = PROD_DEVICES[d.device_id] || d.device_id;
-  var stale = isStale(d.ultimo_contato, 120);
-  var batBaixa = d.bat_pct > 0 && d.bat_pct <= 15;
-  return '<div class="card ' + (stale || batBaixa ? 'alerta' : '') + '">'
-    + '<div class="card-header"><div>'
-    + '<div class="device-name">' + nome + '</div>'
-    + '<div class="device-id">' + d.device_id + '</div>'
-    + '</div><div class="last-seen ' + (stale ? 'stale' : '') + '">' + (stale ? '⚠️ ' : '') + tempoDesde(d.ultimo_contato) + '</div></div>'
-    + metricsHtml(d, 'Sinal WiFi')
-    + '</div>';
-}
-
-function renderTesteCard(d) {
-  var cfg = TESTE_CARD_DEVICES[d.device_id];
+function renderCard(d) {
+  var cfg = DEVICES[d.device_id];
   if (!cfg) return '';
   var stale = isStale(d.ultimo_contato, cfg.hbMin * 3);
   var batBaixa = d.bat_pct > 0 && d.bat_pct <= 15;
@@ -432,13 +411,11 @@ function carregar() {
     .then(function(data) {
       document.getElementById('loading').style.display = 'none';
       document.getElementById('error-msg').style.display = 'none';
-      document.getElementById('prod-section').style.display = 'block';
+      document.getElementById('devices-section').style.display = 'block';
 
-      var prodData  = data.filter(function(d) { return PROD_DEVICES[d.device_id]; });
-      var testeData = data.filter(function(d) { return TESTE_CARD_DEVICES[d.device_id]; });
+      var devicesData = data.filter(function(d) { return DEVICES[d.device_id]; });
 
-      document.getElementById('grid-prod').innerHTML  = prodData.length  ? prodData.map(renderProdCard).join('')   : '<p style="color:#475569">Nenhum device de produção encontrado.</p>';
-      document.getElementById('grid-teste').innerHTML = testeData.length ? testeData.map(renderTesteCard).join('') : '<p style="color:#475569">Nenhum device em teste encontrado.</p>';
+      document.getElementById('grid-devices').innerHTML = devicesData.length ? devicesData.map(renderCard).join('') : '<p style="color:#475569">Nenhum device encontrado.</p>';
 
       var testSection = document.getElementById('test-section');
       if (testSection && testSection.style.display === 'none') {
