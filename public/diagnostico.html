@@ -45,9 +45,6 @@
 
     .metrics { display: flex; flex-direction: column; gap: 14px; }
     .metric-label { font-size: .72rem; color: #94a3b8; margin-bottom: 5px; text-transform: uppercase; letter-spacing: .05em; }
-    .bat-bar-bg { height: 8px; background: #334155; border-radius: 4px; overflow: hidden; }
-    .bat-bar-fill { height: 100%; border-radius: 4px; transition: width .5s ease; }
-    .bat-value { font-size: .82rem; font-weight: 600; margin-top: 5px; }
     .rssi-bars { display: flex; align-items: flex-end; gap: 3px; height: 24px; }
     .rssi-bar { width: 8px; border-radius: 2px; background: #334155; }
     .rssi-value { font-size: .82rem; font-weight: 600; margin-left: 8px; }
@@ -191,8 +188,6 @@ function isStale(str, limitMin) {
   return (Date.now() - d) / 60000 > (limitMin || 120);
 }
 
-function batCor(p) { return p > 50 ? '#22c55e' : p > 20 ? '#f59e0b' : '#ef4444'; }
-
 function rssiBarras(rssi) {
   var dg = [{min:-90,h:6},{min:-80,h:11},{min:-70,h:16},{min:-55,h:21}];
   return dg.map(function(d) {
@@ -243,13 +238,6 @@ function renderHeartbeat(cfg, ultimoContato) {
 
 // ── Cards ──────────────────────────────────────────────────────────────────
 
-function batHtml(pct) {
-  if (pct !== null && pct !== undefined && pct >= 0) {
-    return '<div class="bat-bar-bg"><div class="bat-bar-fill" style="width:' + pct + '%;background:' + batCor(pct) + '"></div></div><div class="bat-value" style="color:' + batCor(pct) + '">' + pct + '%</div>';
-  }
-  return '<div class="no-data">sem dados (firmware sem leitura de bateria)</div>';
-}
-
 function rssiHtml(rssi, label) {
   var rl = rssiLabel(rssi);
   return '<div style="display:flex;align-items:center;gap:8px"><div class="rssi-bars">' + rssiBarras(rssi) + '</div>'
@@ -262,8 +250,6 @@ function rssiHtml(rssi, label) {
 function metricsHtml(d, rssiLabel) {
   var tCls = tempCls(d.temp_c);
   return '<div class="metrics">'
-    + '<div><div class="metric-label">🔋 Bateria</div>' + batHtml(d.bat_pct) + '</div>'
-    + '<div class="divider"></div>'
     + '<div><div class="metric-label">📶 ' + rssiLabel + '</div>' + rssiHtml(d.rssi) + '</div>'
     + '<div class="divider"></div>'
     + '<div><div class="metric-label">🌡️ Temperatura Interna (chip)</div>'
@@ -277,8 +263,7 @@ function renderCard(d) {
   var cfg = DEVICES[d.device_id];
   if (!cfg) return '';
   var stale = isStale(d.ultimo_contato, cfg.hbMin * 3);
-  var batBaixa = d.bat_pct > 0 && d.bat_pct <= 15;
-  var alertaCard = batBaixa || (isStale(d.ultimo_contato, cfg.hbMin) && !isHibernating(cfg));
+  var alertaCard = isStale(d.ultimo_contato, cfg.hbMin) && !isHibernating(cfg);
   return '<div class="card ' + (alertaCard ? 'alerta' : '') + '">'
     + '<div class="card-header"><div>'
     + '<div class="device-name">' + cfg.nome + (cfg.isLora ? ' <span class="lora-badge">LoRa</span>' : '') + '</div>'
@@ -357,9 +342,6 @@ function carregarSessoesTeste(date) {
         var limite = LIMITE_ANOMALIA_TESTE[s.device_id] || 3600;
         var isHb   = dur === 0;
         var isAnom = !isHb && dur && dur > limite;
-        var batH = (s.bat_pct !== null && s.bat_pct !== undefined && s.bat_pct > 0)
-          ? '<span style="color:' + (s.bat_pct > 50 ? '#22c55e' : s.bat_pct > 20 ? '#f59e0b' : '#ef4444') + ';font-weight:600">' + s.bat_pct + '%</span>'
-          : '<span style="color:#475569">—</span>';
         var rssiH = (s.rssi !== null && s.rssi !== undefined)
           ? '<span style="color:#94a3b8">' + s.rssi + ' dBm</span>'
           : '<span style="color:#475569">—</span>';
@@ -368,7 +350,6 @@ function carregarSessoesTeste(date) {
           + '<td>' + fmtDtHoraT(s.inicio) + '</td>'
           + '<td>' + fmtDtHoraT(s.fim) + '</td>'
           + '<td><span class="dur-val' + (isAnom ? ' warn' : '') + '">' + fmtDurT(dur) + (isAnom ? ' ⚠️' : '') + '</span></td>'
-          + '<td>' + batH + '</td>'
           + '<td>' + rssiH + '</td>'
           + '<td><span class="dev-badge">' + s.device_id + '</span></td>'
           + '</tr>';
@@ -376,7 +357,7 @@ function carregarSessoesTeste(date) {
 
       if (body) body.innerHTML = '<table class="test-table"><thead><tr>'
         + '<th>Dispositivo</th><th>Início</th><th>Fim</th>'
-        + '<th>Duração</th><th>Bateria</th><th>RSSI</th><th>Device ID</th>'
+        + '<th>Duração</th><th>RSSI</th><th>Device ID</th>'
         + '</tr></thead><tbody>' + rows + '</tbody></table>';
     })
     .catch(function(e) { if (meta) meta.textContent = 'Erro: ' + e.message; });
