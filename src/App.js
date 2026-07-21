@@ -47,8 +47,11 @@ function deduplicar(arr) {
 }
 
 function limpar(raw, devicesById) {
-  // heartbeats (duracao === 0) nunca entram em nenhuma contagem do dashboard — só no diagnóstico
-  const parsed = raw.map(s => parseSession(s, devicesById)).filter(s => !DEVICES_TESTE.has(s.deviceId) && s.duracao !== 0);
+  // devicesById vem de /dispositivos (só ativos) → device inativo some do dashboard.
+  // heartbeats (duracao === 0) nunca entram em nenhuma contagem — só no diagnóstico.
+  const temCfg = Object.keys(devicesById).length > 0;
+  const parsed = raw.map(s => parseSession(s, devicesById))
+    .filter(s => s.duracao !== 0 && (!temCfg || devicesById[s.deviceId]));
   const dedup = deduplicar(parsed);
   return {
     normais:  dedup.filter(s => !s.duracao || s.duracao <= (DURACAO_MAX_POR_DEVICE[s.deviceId] || DURACAO_MAX_S)),

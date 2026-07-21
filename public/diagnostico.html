@@ -322,7 +322,7 @@ function carregarSessoesTeste(date) {
     .then(function(raw) {
       var temCfg = Object.keys(DEVICE_CFG).length > 0;
       var arr = (Array.isArray(raw) ? raw : raw.sessoes || [])
-        .filter(function(s) { return !temCfg || DEVICE_CFG[s.device_id]; })
+        .filter(function(s) { return !temCfg || (DEVICE_CFG[s.device_id] && DEVICE_CFG[s.device_id].ativo); })
         .sort(function(a, b) { return new Date(b.inicio) - new Date(a.inicio); });
 
       var label = isTodayD(date) ? 'Hoje'
