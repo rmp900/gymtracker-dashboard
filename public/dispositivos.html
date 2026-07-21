@@ -56,6 +56,16 @@
     .msg.ok { background: #eafaf1; color: #16794f; border: 1px solid #b7ecd3; }
     .msg.erro { background: #fdecea; color: #9a2c1f; border: 1px solid #f6c6bd; }
 
+    .hint {
+      background: #fff8f3;
+      border: 1px solid #f3d9c9;
+      border-radius: 10px;
+      padding: 10px 16px;
+      font-size: .82rem;
+      color: #7a4a33;
+      line-height: 1.5;
+    }
+
     .table-card {
       background: #fff;
       border-radius: 12px;
@@ -83,20 +93,25 @@
 
     td input[type="text"], td input[type="number"] {
       width: 100%;
-      min-width: 90px;
-      border: 1px solid transparent;
+      min-width: 130px;
+      border: 1px solid #dcdcd5;
       border-radius: 6px;
       padding: 6px 8px;
       font-size: .85rem;
       font-family: inherit;
-      background: transparent;
+      color: #1a1a1a;
+      background: #fafaf8;
     }
     td input.num { min-width: 64px; }
-    td input[type="text"]:hover, td input[type="number"]:hover,
+    td input[type="text"]:hover, td input[type="number"]:hover {
+      border-color: #bbb;
+      background: #fff;
+    }
     td input[type="text"]:focus, td input[type="number"]:focus {
-      border-color: #ddd;
+      border-color: #D85A30;
       background: #fff;
       outline: none;
+      box-shadow: 0 0 0 2px rgba(216,90,48,.15);
     }
 
     .cor-cell { display: flex; align-items: center; gap: 8px; }
@@ -172,6 +187,7 @@
 </header>
 
 <div class="container">
+  <div class="hint">✏️ Edite os campos direto na tabela (aparelho, cor, tipo, heartbeat, hibernação, ordem) e clique em <strong>Salvar</strong> na linha. <strong>Desativar</strong> remove o device do dashboard sem apagar o histórico.</div>
   <div id="msg" class="msg" style="display:none"></div>
 
   <div class="table-card">
