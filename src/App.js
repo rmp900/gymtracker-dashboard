@@ -3,8 +3,11 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieCha
 
 const API_BASE = "https://gymtracker-api-production-bc16.up.railway.app";
 
-// Devices excluídos do dashboard — apenas aparecem no diagnóstico
-const DEVICES_TESTE = new Set(["device_006", "device_008"]);
+// Devices excluídos do dashboard — apenas aparecem no diagnóstico.
+// device_006 (Pulley Triceps) e device_008 (Esteira A) foram promovidos a
+// produção — não são mais de teste. Vazio por ora; add aqui se voltar a ter
+// device de bancada/lab.
+const DEVICES_TESTE = new Set([]);
 
 const DURACAO_MAX_S = 3600; // padrão 1h
 const DURACAO_MAX_POR_DEVICE = { device_004: 14400, device_009: 14400 }; // esteira: até 4h é normal
