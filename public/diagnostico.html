@@ -108,7 +108,7 @@
   <div class="test-header">
     <div>
       <div class="test-title">📋 Sessões Brutas — Todos os Dispositivos</div>
-      <div class="test-subtitle">device_001 a device_008 — dados brutos, heartbeats incluídos</div>
+      <div class="test-subtitle">Dados brutos de todos os dispositivos — heartbeats incluídos</div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
       <div class="date-nav">
@@ -129,38 +129,36 @@
 <script>
 var API = 'https://gymtracker-api-production-bc16.up.railway.app';
 
-// Cards de dispositivos — todos com heartbeat. Mesmo perfil (bateria + deep sleep,
-// hiberna 00h-06h) exceto o LoRa, que não hiberna e tem cadência de check-in mais curta.
-var DEVICES = {
-  device_001: { nome: 'Leg Press',          isLora: false, hbMin: 70, hibernacao: true  },
-  device_002: { nome: 'Pulley Remada',      isLora: false, hbMin: 70, hibernacao: true  },
-  device_003: { nome: 'Supino Máquina',     isLora: false, hbMin: 70, hibernacao: true  },
-  device_004: { nome: 'Esteira B',          isLora: false, hbMin: 70, hibernacao: true  },
-  device_005: { nome: 'Pulley Alto',        isLora: false, hbMin: 70, hibernacao: true  },
-  device_006: { nome: 'LoRa — Device 006',  isLora: true,  hbMin: 5,  hibernacao: false },
-  device_007: { nome: 'Cadeira Extensora — Device 007', isLora: false, hbMin: 70, hibernacao: true },
-  device_008: { nome: 'Device 008',         isLora: false, hbMin: 70, hibernacao: true  },
-  device_009: { nome: 'Esteira A',          isLora: false, hbMin: 70, hibernacao: false },
-};
+// Config de devices (nome, tipo/LoRa, heartbeat, hibernação) vem de /dispositivos —
+// mesma fonte da tela de configuração (dispositivos.html). Nada de nome hardcoded:
+// o que você edita na tela de config replica aqui. Preenchido no boot e a cada
+// refresh por carregarDispositivos().
+var DEVICE_CFG = {};
+var FATOR_ALERTA = 1.2; // margem sobre o heartbeat configurado antes de alertar
 
-// Tabela de sessões brutas — todos os dispositivos (001 a 008), heartbeats incluídos
-var TESTE_TABLE_DEVICES = {
-  device_001: 'Leg Press',
-  device_002: 'Pulley Remada',
-  device_003: 'Supino Máquina',
-  device_004: 'Esteira B',
-  device_005: 'Pulley Alto',
-  device_006: 'LoRa — Device 006',
-  device_007: 'Cadeira Extensora — Device 007',
-  device_008: 'Device 008',
-  device_009: 'Esteira A',
-};
+function construirCfg(lista) {
+  var map = {};
+  (lista || []).forEach(function(dev) {
+    map[dev.device_id] = {
+      nome:       dev.aparelho || dev.device_id,
+      isLora:     (dev.tipo || '').trim().toLowerCase() === 'lora',
+      hbMin:      dev.heartbeat_min || 60,
+      hibernacao: !!dev.hibernacao,   // "00:00-06:00" => hiberna; null => não
+      ativo:      dev.ativo !== false
+    };
+  });
+  return map;
+}
 
-var LIMITE_ANOMALIA_TESTE = {
-  device_001: 3600, device_002: 3600, device_003: 3600,
-  device_004: 14400, device_005: 3600,
-  device_006: 3600, device_007: 3600, device_008: 3600, device_009: 14400,
-};
+function cfgDe(deviceId) {
+  return DEVICE_CFG[deviceId] || { nome: deviceId, isLora: false, hbMin: 60, hibernacao: false, ativo: true };
+}
+
+// Esteiras rodam sessões longas — limite de anomalia maior. Derivado do nome
+// pra pegar qualquer esteira nova sem precisar editar código.
+function limiteAnomalia(nome) {
+  return /esteira/i.test(nome || '') ? 14400 : 3600;
+}
 
 function parseBRT(str) {
   if (!str) return null;
@@ -227,7 +225,7 @@ function renderHeartbeat(cfg, ultimoContato) {
     return '<div class="heartbeat-row"><span class="heart hibernate">🐻</span><div><div class="heart-label hibernate">Hibernando</div><div class="heart-sub">Janela 00h–06h · acorda às 06h</div></div></div>';
   }
 
-  var alive = diffMin <= cfg.hbMin;
+  var alive = diffMin <= cfg.hbMin * FATOR_ALERTA;
   if (alive) {
     var mins = Math.round(diffMin);
     return '<div class="heartbeat-row"><span class="heart alive">💚</span><div><div class="heart-label alive">Operacional</div><div class="heart-sub">Último heartbeat ' + (mins < 1 ? 'agora mesmo' : mins + 'min atrás') + ' · próximo em ~' + cfg.hbMin + 'min</div></div></div>';
@@ -260,10 +258,9 @@ function metricsHtml(d, rssiLabel) {
 }
 
 function renderCard(d) {
-  var cfg = DEVICES[d.device_id];
-  if (!cfg) return '';
+  var cfg = cfgDe(d.device_id);
   var stale = isStale(d.ultimo_contato, cfg.hbMin * 3);
-  var alertaCard = isStale(d.ultimo_contato, cfg.hbMin) && !isHibernating(cfg);
+  var alertaCard = isStale(d.ultimo_contato, cfg.hbMin * FATOR_ALERTA) && !isHibernating(cfg);
   return '<div class="card ' + (alertaCard ? 'alerta' : '') + '">'
     + '<div class="card-header"><div>'
     + '<div class="device-name">' + cfg.nome + (cfg.isLora ? ' <span class="lora-badge">LoRa</span>' : '') + '</div>'
@@ -323,8 +320,9 @@ function carregarSessoesTeste(date) {
   fetch(API + '/sessoes/dia?data=' + ymd)
     .then(function(r) { return r.json(); })
     .then(function(raw) {
+      var temCfg = Object.keys(DEVICE_CFG).length > 0;
       var arr = (Array.isArray(raw) ? raw : raw.sessoes || [])
-        .filter(function(s) { return TESTE_TABLE_DEVICES[s.device_id]; })
+        .filter(function(s) { return !temCfg || DEVICE_CFG[s.device_id]; })
         .sort(function(a, b) { return new Date(b.inicio) - new Date(a.inicio); });
 
       var label = isTodayD(date) ? 'Hoje'
@@ -337,9 +335,9 @@ function carregarSessoesTeste(date) {
       }
 
       var rows = arr.map(function(s) {
-        var nome = TESTE_TABLE_DEVICES[s.device_id] || s.device_id;
+        var nome = cfgDe(s.device_id).nome;
         var dur = s.duracao_segundos !== undefined ? s.duracao_segundos : s.duracao;
-        var limite = LIMITE_ANOMALIA_TESTE[s.device_id] || 3600;
+        var limite = limiteAnomalia(nome);
         var isHb   = dur === 0;
         var isAnom = !isHb && dur && dur > limite;
         var rssiH = (s.rssi !== null && s.rssi !== undefined)
@@ -394,7 +392,10 @@ function carregar() {
       document.getElementById('error-msg').style.display = 'none';
       document.getElementById('devices-section').style.display = 'block';
 
-      var devicesData = data.filter(function(d) { return DEVICES[d.device_id]; });
+      var temCfg = Object.keys(DEVICE_CFG).length > 0;
+      var devicesData = temCfg
+        ? data.filter(function(d) { return DEVICE_CFG[d.device_id] && DEVICE_CFG[d.device_id].ativo; })
+        : data;  // fallback: /dispositivos indisponível → mostra o que vier do status
 
       document.getElementById('grid-devices').innerHTML = devicesData.length ? devicesData.map(renderCard).join('') : '<p style="color:#475569">Nenhum device encontrado.</p>';
 
@@ -413,8 +414,19 @@ function carregar() {
     });
 }
 
-carregar();
-setInterval(carregar, 30000);
+function carregarDispositivos() {
+  return fetch(API + '/dispositivos?todos=true', { signal: AbortSignal.timeout(10000) })
+    .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .then(function(lista) { DEVICE_CFG = construirCfg(lista); })
+    .catch(function() { /* segue com DEVICE_CFG vazio — fallback usa device_id como nome */ });
+}
+
+// Busca a config dos devices antes de renderizar; depois re-busca config + status
+// juntos a cada 30s, pra edições na tela de configuração aparecerem sozinhas.
+carregarDispositivos().then(function() {
+  carregar();
+  setInterval(function() { carregarDispositivos().then(carregar); }, 30000);
+});
 </script>
 </body>
 </html>
