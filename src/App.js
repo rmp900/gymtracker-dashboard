@@ -3,9 +3,6 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, PieCha
 
 const API_BASE = "https://gymtracker-api-production-bc16.up.railway.app";
 
-const DEVICE_NAMES  = { device_001: "Leg Press",  device_002: "Pulley Remada", device_003: "Supino Máquina", device_004: "Esteira B",  device_005: "Pulley Alto", device_007: "Cadeira Extensora", device_009: "Esteira A" };
-const DEVICE_COLORS = { device_001: "#5DCAA5",     device_002: "#378ADD",      device_003: "#D85A30",       device_004: "#9B6DD8",   device_005: "#2563C9",    device_007: "#3DA882", device_009: "#E8A23D" };
-
 // Devices excluídos do dashboard — apenas aparecem no diagnóstico
 const DEVICES_TESTE = new Set(["device_006", "device_008"]);
 
@@ -18,7 +15,7 @@ function toYMD(d) { return d.toLocaleDateString("sv-SE"); }
 function addDays(d, n) { const x = new Date(d); x.setDate(x.getDate() + n); return x; }
 function isToday(d) { return toYMD(d) === toYMD(new Date()); }
 
-function parseSession(s) {
+function parseSession(s, devicesById) {
   const deviceId = s.device_id || s.deviceId || s.device || "";
   const start = s.inicio || s.start_time || s.started_at || s.created_at;
   const end   = s.fim   || s.end_time   || s.ended_at;
@@ -28,7 +25,7 @@ function parseSession(s) {
   const tz = (str) => str && (str.includes("+") || str.endsWith("Z")) ? "" : "-03:00";
   return {
     id: s.id, deviceId,
-    deviceName: DEVICE_NAMES[deviceId] || deviceId || "Aparelho",
+    deviceName: devicesById[deviceId]?.aparelho || deviceId || "Aparelho",
     start: start ? new Date(start + tz(start)) : null,
     end:   end   ? new Date(end   + tz(end))   : null,
     duracao: dur !== undefined && dur !== null ? Math.round(Number(dur)) : null,
@@ -46,9 +43,9 @@ function deduplicar(arr) {
   });
 }
 
-function limpar(raw) {
+function limpar(raw, devicesById) {
   // heartbeats (duracao === 0) nunca entram em nenhuma contagem do dashboard — só no diagnóstico
-  const parsed = raw.map(parseSession).filter(s => !DEVICES_TESTE.has(s.deviceId) && s.duracao !== 0);
+  const parsed = raw.map(s => parseSession(s, devicesById)).filter(s => !DEVICES_TESTE.has(s.deviceId) && s.duracao !== 0);
   const dedup = deduplicar(parsed);
   return {
     normais:  dedup.filter(s => !s.duracao || s.duracao <= (DURACAO_MAX_POR_DEVICE[s.deviceId] || DURACAO_MAX_S)),
@@ -57,11 +54,11 @@ function limpar(raw) {
   };
 }
 
-function calcDonut(sessions) {
+function calcDonut(sessions, devicesById) {
   const map = {};
   sessions.forEach(s => { map[s.deviceId] = (map[s.deviceId] || 0) + 1; });
   return Object.entries(map).map(([id, value]) => ({
-    id, value, name: DEVICE_NAMES[id] || id, color: DEVICE_COLORS[id] || "#ccc",
+    id, value, name: devicesById[id]?.aparelho || id, color: devicesById[id]?.cor || "#ccc",
   }));
 }
 
@@ -105,13 +102,6 @@ function StatCard({ label, value, sub }) {
       {sub && <div style={{ fontSize: 12, color: MID, marginTop: 6 }}>{sub}</div>}
     </div>
   );
-}
-
-function BatIcon({ pct }) {
-  if (pct === null || pct === undefined) return null;
-  const cor = pct > 50 ? "#16a34a" : pct > 20 ? "#d97706" : "#dc2626";
-  const emoji = pct > 50 ? "🔋" : pct > 20 ? "🪫" : "⚠️";
-  return <span title={`Bateria: ${pct}%`} style={{ fontSize: 11, color: cor, marginLeft: 6, fontWeight: 600 }}>{emoji} {pct}%</span>;
 }
 
 function ChartTooltip({ active, payload }) {
@@ -183,7 +173,7 @@ export default function GymTracker() {
   const [dupCount,     setDupCount]     = useState(0);
   const [loading,      setLoading]      = useState(true);
   const [lastUpdate,   setLastUpdate]   = useState(null);
-  const [devStatus,    setDevStatus]    = useState({});
+  const [devicesById,  setDevicesById]  = useState({});
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showAnomalas, setShowAnomalas] = useState(false);
   const [dados7,       setDados7]       = useState([]);
@@ -197,7 +187,7 @@ export default function GymTracker() {
       if (!res.ok) return;
       const raw = await res.json();
       const arr = Array.isArray(raw) ? raw : raw.sessoes || [];
-      const { normais, anomalas: anom, dupCount: dup } = limpar(arr);
+      const { normais, anomalas: anom, dupCount: dup } = limpar(arr, devicesById);
       setSessions(normais);
       setAnomalas(anom);
       setDupCount(dup);
@@ -206,7 +196,7 @@ export default function GymTracker() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [devicesById]);
 
   const fetchPeriodo = useCallback(async (dias, setDados, setTotal) => {
     try {
@@ -216,21 +206,21 @@ export default function GymTracker() {
       if (!res.ok) return;
       const raw = await res.json();
       const arr = Array.isArray(raw) ? raw : raw.sessoes || [];
-      const { normais } = limpar(arr);
-      setDados(calcDonut(normais));
+      const { normais } = limpar(arr, devicesById);
+      setDados(calcDonut(normais, devicesById));
       setTotal(normais.length);
     } catch (_) {}
-  }, []);
+  }, [devicesById]);
 
-  const fetchDiag = useCallback(async () => {
-    try {
-      const res  = await fetch(`${API_BASE}/dispositivos/status`);
-      if (!res.ok) return;
-      const data = await res.json();
-      const idx  = {};
-      data.forEach(d => { idx[d.device_id] = d; });
-      setDevStatus(idx);
-    } catch (_) {}
+  useEffect(() => {
+    fetch(`${API_BASE}/dispositivos`)
+      .then(res => res.ok ? res.json() : [])
+      .then(data => {
+        const idx = {};
+        data.forEach(d => { idx[d.device_id] = d; });
+        setDevicesById(idx);
+      })
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -248,12 +238,9 @@ export default function GymTracker() {
   }, [selectedDate, fetchDia]);
 
   useEffect(() => {
-    fetchDiag();
     fetchPeriodo(7,  setDados7,  setTotal7);
     fetchPeriodo(30, setDados30, setTotal30);
-    const t = setInterval(fetchDiag, 60000);
-    return () => clearInterval(t);
-  }, [fetchDiag, fetchPeriodo]);
+  }, [fetchPeriodo]);
 
   const stats    = computeStats(sessions);
   const maxBar   = Math.max(...stats.byHour.map(h => h.sessoes), 1);
@@ -276,6 +263,7 @@ export default function GymTracker() {
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <a href="/diagnostico.html" style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 600, color: WHITE, textDecoration: "none", background: "rgba(0,0,0,.20)", border: "1px solid rgba(255,255,255,.35)", borderRadius: 8, padding: "5px 12px" }}>🔧 Diagnóstico</a>
           <a href="/instalacao.html" style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 600, color: WHITE, textDecoration: "none", background: "rgba(0,0,0,.20)", border: "1px solid rgba(255,255,255,.35)", borderRadius: 8, padding: "5px 12px" }}>🛠️ Instalação</a>
+          <a href="/dispositivos.html" style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 600, color: WHITE, textDecoration: "none", background: "rgba(0,0,0,.20)", border: "1px solid rgba(255,255,255,.35)", borderRadius: 8, padding: "5px 12px" }}>⚙️ Dispositivos</a>
           <a href="/status.html" target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(255,255,255,.18)", borderRadius: 20, padding: "4px 12px" }}>
               <div style={{ width: 7, height: 7, borderRadius: "50%", background: WHITE }} />
@@ -317,7 +305,7 @@ export default function GymTracker() {
         )}
 
         <div className="gt-row fade-up" style={{ marginBottom: 20 }}>
-          <StatCard label="Aparelhos" value={Object.keys(DEVICE_NAMES).length} sub="monitorados" />
+          <StatCard label="Aparelhos" value={Object.keys(devicesById).filter(id => !DEVICES_TESTE.has(id)).length} sub="monitorados" />
           <StatCard label={isToday(selectedDate) ? "Sessões hoje" : "Sessões no dia"} value={loading ? "—" : stats.total} sub={fmtDateLabel(selectedDate)} />
           <StatCard label="Horário de pico" value={stats.horarioPico} sub="mais movimentado" />
           <StatCard label="Duração média" value={stats.duracaoMedia ? fmtDur(stats.duracaoMedia) : "—"} sub="por sessão" />
@@ -352,15 +340,12 @@ export default function GymTracker() {
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                 {stats.ranking.map((item, i) => {
-                  const devId = Object.keys(DEVICE_NAMES).find(k => DEVICE_NAMES[k] === item.name);
-                  const batPct = devId ? devStatus[devId]?.bat_pct : undefined;
                   return (
                     <div key={item.name}>
                       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                           <div style={{ width: 22, height: 22, borderRadius: 4, background: i === 0 ? O : OL, color: i === 0 ? WHITE : OD, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Barlow Condensed',sans-serif", fontSize: 12, fontWeight: 700 }}>{i + 1}</div>
                           <span style={{ fontSize: 14, fontWeight: 500, color: DARK }}>{item.name}</span>
-                          <BatIcon pct={batPct} />
                         </div>
                         <span style={{ fontFamily: "'Barlow Condensed',sans-serif", fontSize: 18, fontWeight: 700, color: i === 0 ? O : DARK }}>{item.count}</span>
                       </div>
@@ -376,7 +361,7 @@ export default function GymTracker() {
         </div>
 
         <div className="gt-row fade-up" style={{ marginBottom: 20, animationDelay: ".16s" }}>
-          <DonutCard title={isToday(selectedDate) ? "Hoje" : fmtDateLabel(selectedDate)} data={calcDonut(sessions)} total={sessions.length} />
+          <DonutCard title={isToday(selectedDate) ? "Hoje" : fmtDateLabel(selectedDate)} data={calcDonut(sessions, devicesById)} total={sessions.length} />
           <DonutCard title="Últimos 7 dias" data={dados7} total={total7} />
           <DonutCard title="Últimos 30 dias" data={dados30} total={total30} />
         </div>
@@ -411,7 +396,6 @@ export default function GymTracker() {
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         <div style={{ width: 8, height: 8, borderRadius: "50%", background: O, flexShrink: 0 }} />
                         <span style={{ fontSize: 14, fontWeight: 500, color: DARK }}>{s.deviceName}</span>
-                        <BatIcon pct={devStatus[s.deviceId]?.bat_pct} />
                       </div>
                     </td>
                     <td style={{ padding: "12px 22px", fontSize: 13, color: DARK, borderBottom: `1px solid ${BORDER}` }}>{fmtDataHora(s.start)}</td>

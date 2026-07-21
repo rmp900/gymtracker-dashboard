@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GymTracker — Dispositivos</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #F5F5F0;
+      color: #1a1a1a;
+      min-height: 100vh;
+      padding: 24px 16px 48px;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px;
+      margin-bottom: 20px;
+      max-width: 1100px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    h1 { font-size: 1.3rem; font-weight: 700; }
+
+    .header-controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+    a.btn-link, button.btn-reset, button.btn-add {
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 8px 14px;
+      font-size: .82rem;
+      font-weight: 600;
+      color: #555;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+    }
+    a.btn-link:hover, button.btn-reset:hover { border-color: #D85A30; color: #D85A30; }
+    button.btn-add { background: #D85A30; border-color: #D85A30; color: #fff; }
+    button.btn-add:hover { background: #c14e28; }
+
+    .container { max-width: 1100px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px; }
+
+    .msg {
+      border-radius: 10px;
+      padding: 10px 16px;
+      font-size: .85rem;
+      font-weight: 600;
+    }
+    .msg.ok { background: #eafaf1; color: #16794f; border: 1px solid #b7ecd3; }
+    .msg.erro { background: #fdecea; color: #9a2c1f; border: 1px solid #f6c6bd; }
+
+    .table-card {
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,.06);
+      overflow-x: auto;
+    }
+    table { width: 100%; border-collapse: collapse; min-width: 780px; }
+    thead th {
+      text-align: left;
+      font-size: .68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: #999;
+      padding: 12px 14px;
+      border-bottom: 1px solid #eee;
+      background: #fafaf8;
+      white-space: nowrap;
+    }
+    tbody tr { border-bottom: 1px solid #f0f0ec; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr.inativo { opacity: .5; }
+    td { padding: 8px 14px; vertical-align: middle; }
+    td.mono { font-family: monospace; font-size: .82rem; color: #555; white-space: nowrap; }
+
+    td input[type="text"], td input[type="number"] {
+      width: 100%;
+      min-width: 90px;
+      border: 1px solid transparent;
+      border-radius: 6px;
+      padding: 6px 8px;
+      font-size: .85rem;
+      font-family: inherit;
+      background: transparent;
+    }
+    td input.num { min-width: 64px; }
+    td input[type="text"]:hover, td input[type="number"]:hover,
+    td input[type="text"]:focus, td input[type="number"]:focus {
+      border-color: #ddd;
+      background: #fff;
+      outline: none;
+    }
+
+    .cor-cell { display: flex; align-items: center; gap: 8px; }
+    .swatch { width: 18px; height: 18px; border-radius: 5px; flex-shrink: 0; border: 1px solid rgba(0,0,0,.1); }
+    .cor-cell input { min-width: 76px; font-family: monospace; }
+
+    .badge {
+      font-size: .72rem;
+      font-weight: 700;
+      padding: 3px 9px;
+      border-radius: 20px;
+      white-space: nowrap;
+    }
+    .badge.ativo { background: #eafaf1; color: #16794f; }
+    .badge.inativo { background: #f2f2ee; color: #999; }
+
+    .acoes { display: flex; gap: 6px; white-space: nowrap; }
+    .acoes button {
+      border: 1px solid #ddd;
+      background: #fff;
+      border-radius: 6px;
+      padding: 6px 10px;
+      font-size: .76rem;
+      font-weight: 600;
+      cursor: pointer;
+      color: #555;
+    }
+    .acoes button.btn-salvar:hover { border-color: #16794f; color: #16794f; }
+    .acoes button.btn-toggle:hover { border-color: #9a2c1f; color: #9a2c1f; }
+
+    .empty-msg {
+      text-align: center;
+      color: #999;
+      padding: 40px 20px;
+      font-size: .95rem;
+    }
+
+    /* Modal de novo dispositivo */
+    .modal-backdrop {
+      position: fixed; inset: 0; background: rgba(0,0,0,.35);
+      display: flex; align-items: center; justify-content: center;
+      padding: 20px; z-index: 10;
+    }
+    .modal {
+      background: #fff; border-radius: 14px; padding: 22px;
+      width: 100%; max-width: 420px;
+      display: flex; flex-direction: column; gap: 12px;
+    }
+    .modal h2 { font-size: 1.05rem; margin-bottom: 4px; }
+    .modal label { font-size: .78rem; font-weight: 600; color: #666; display: block; margin-bottom: 4px; }
+    .modal input {
+      width: 100%; border: 1px solid #ddd; border-radius: 8px;
+      padding: 9px 10px; font-size: .88rem; font-family: inherit;
+    }
+    .modal-row { display: flex; gap: 10px; }
+    .modal-row > div { flex: 1; }
+    .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px; }
+    .modal-actions button {
+      border-radius: 8px; padding: 9px 16px; font-size: .85rem; font-weight: 600;
+      cursor: pointer; border: 1px solid #ddd; background: #fff; color: #555;
+    }
+    .modal-actions button.confirmar { background: #D85A30; border-color: #D85A30; color: #fff; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>GymTracker — Dispositivos</h1>
+  <div class="header-controls">
+    <a href="/" class="btn-link">← Dashboard</a>
+    <button class="btn-add" id="btn-add">+ Novo dispositivo</button>
+  </div>
+</header>
+
+<div class="container">
+  <div id="msg" class="msg" style="display:none"></div>
+
+  <div class="table-card">
+    <table>
+      <thead>
+        <tr>
+          <th>Device ID</th>
+          <th>Aparelho</th>
+          <th>Cor</th>
+          <th>Tipo</th>
+          <th>Heartbeat (min)</th>
+          <th>Hibernação</th>
+          <th>Ordem</th>
+          <th>Status</th>
+          <th>Ações</th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+    <div id="empty" class="empty-msg" style="display:none">Nenhum dispositivo cadastrado.</div>
+  </div>
+</div>
+
+<div id="modal-backdrop" class="modal-backdrop" style="display:none">
+  <div class="modal">
+    <h2>Novo dispositivo</h2>
+    <div>
+      <label>Device ID</label>
+      <input type="text" id="f-device-id" placeholder="device_010" />
+    </div>
+    <div>
+      <label>Aparelho</label>
+      <input type="text" id="f-aparelho" placeholder="Ex: Cadeira Adutora" />
+    </div>
+    <div class="modal-row">
+      <div>
+        <label>Cor</label>
+        <input type="text" id="f-cor" placeholder="#D85A30" />
+      </div>
+      <div>
+        <label>Tipo</label>
+        <input type="text" id="f-tipo" placeholder="Produção" />
+      </div>
+    </div>
+    <div class="modal-row">
+      <div>
+        <label>Heartbeat (min)</label>
+        <input type="number" id="f-heartbeat" min="0" placeholder="60" />
+      </div>
+      <div>
+        <label>Ordem</label>
+        <input type="number" id="f-ordem" min="0" placeholder="1" />
+      </div>
+    </div>
+    <div>
+      <label>Hibernação (opcional)</label>
+      <input type="text" id="f-hibernacao" placeholder="00:00-06:00" />
+    </div>
+    <div class="modal-actions">
+      <button id="btn-cancelar">Cancelar</button>
+      <button class="confirmar" id="btn-confirmar">Criar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+var API = 'https://gymtracker-api-production-bc16.up.railway.app';
+var dispositivos = [];
+
+function esc(v) {
+  return String(v == null ? '' : v).replace(/[&<>"']/g, function(c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
+
+function mostrarMsg(texto, tipo) {
+  var el = document.getElementById('msg');
+  el.textContent = texto;
+  el.className = 'msg ' + tipo;
+  el.style.display = 'block';
+  clearTimeout(mostrarMsg._t);
+  mostrarMsg._t = setTimeout(function() { el.style.display = 'none'; }, 4000);
+}
+
+function carregar() {
+  fetch(API + '/dispositivos?todos=true')
+    .then(function(r) { if (!r.ok) throw new Error(); return r.json(); })
+    .then(function(data) { dispositivos = Array.isArray(data) ? data : []; renderizar(); })
+    .catch(function() { mostrarMsg('Erro ao carregar dispositivos.', 'erro'); });
+}
+
+function renderizar() {
+  var tbody = document.getElementById('tbody');
+  var empty = document.getElementById('empty');
+  tbody.innerHTML = '';
+
+  if (!dispositivos.length) {
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  dispositivos.slice()
+    .sort(function(a, b) { return (a.ordem || 0) - (b.ordem || 0); })
+    .forEach(function(d) {
+      var tr = document.createElement('tr');
+      tr.className = d.ativo ? '' : 'inativo';
+      tr.dataset.deviceId = d.device_id;
+      tr.innerHTML =
+        '<td class="mono">' + esc(d.device_id) + '</td>' +
+        '<td><input type="text" data-f="aparelho" value="' + esc(d.aparelho) + '"></td>' +
+        '<td class="cor-cell"><span class="swatch" style="background:' + esc(d.cor || '#ccc') + '"></span>' +
+          '<input type="text" data-f="cor" value="' + esc(d.cor) + '"></td>' +
+        '<td><input type="text" data-f="tipo" value="' + esc(d.tipo) + '"></td>' +
+        '<td><input type="number" min="0" class="num" data-f="heartbeat_min" value="' + esc(d.heartbeat_min) + '"></td>' +
+        '<td><input type="text" data-f="hibernacao" placeholder="—" value="' + esc(d.hibernacao) + '"></td>' +
+        '<td><input type="number" min="0" class="num" data-f="ordem" value="' + esc(d.ordem) + '"></td>' +
+        '<td><span class="badge ' + (d.ativo ? 'ativo">Ativo' : 'inativo">Inativo') + '</span></td>' +
+        '<td class="acoes">' +
+          '<button class="btn-salvar">Salvar</button>' +
+          '<button class="btn-toggle">' + (d.ativo ? 'Desativar' : 'Reativar') + '</button>' +
+        '</td>';
+      tbody.appendChild(tr);
+
+      var corInput = tr.querySelector('[data-f="cor"]');
+      var swatch = tr.querySelector('.swatch');
+      corInput.addEventListener('input', function() { swatch.style.background = corInput.value || '#ccc'; });
+
+      tr.querySelector('.btn-salvar').addEventListener('click', function() { salvar(d.device_id, tr); });
+      tr.querySelector('.btn-toggle').addEventListener('click', function() { toggleAtivo(d.device_id, !d.ativo); });
+    });
+}
+
+function coletarCampos(tr) {
+  var out = {};
+  tr.querySelectorAll('[data-f]').forEach(function(el) {
+    var f = el.dataset.f;
+    var v = el.value;
+    if (f === 'heartbeat_min' || f === 'ordem') {
+      out[f] = v === '' ? null : parseInt(v, 10);
+    } else if (f === 'hibernacao') {
+      out[f] = v.trim() === '' ? null : v;
+    } else {
+      out[f] = v;
+    }
+  });
+  return out;
+}
+
+function salvar(deviceId, tr) {
+  var payload = coletarCampos(tr);
+  fetch(API + '/dispositivos/' + encodeURIComponent(deviceId), {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  })
+    .then(function(r) { if (!r.ok) throw new Error(); return r.json(); })
+    .then(function() { mostrarMsg('Dispositivo ' + deviceId + ' atualizado.', 'ok'); carregar(); })
+    .catch(function() { mostrarMsg('Erro ao salvar ' + deviceId + '.', 'erro'); });
+}
+
+function toggleAtivo(deviceId, novoAtivo) {
+  if (!novoAtivo && !confirm('Desativar ' + deviceId + '? Ele deixa de aparecer no dashboard e na view pública.')) return;
+  fetch(API + '/dispositivos/' + encodeURIComponent(deviceId), {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ativo: novoAtivo })
+  })
+    .then(function(r) { if (!r.ok) throw new Error(); return r.json(); })
+    .then(function() { mostrarMsg('Status de ' + deviceId + ' atualizado.', 'ok'); carregar(); })
+    .catch(function() { mostrarMsg('Erro ao atualizar status.', 'erro'); });
+}
+
+// ── Modal de novo dispositivo ─────────────────────────────────────────────
+
+function abrirModal() {
+  ['f-device-id', 'f-aparelho', 'f-cor', 'f-tipo', 'f-heartbeat', 'f-ordem', 'f-hibernacao'].forEach(function(id) {
+    document.getElementById(id).value = '';
+  });
+  var maxOrdem = dispositivos.reduce(function(mx, d) { return Math.max(mx, d.ordem || 0); }, 0);
+  document.getElementById('f-ordem').value = maxOrdem + 1;
+  document.getElementById('f-heartbeat').value = 60;
+  document.getElementById('modal-backdrop').style.display = 'flex';
+}
+
+function fecharModal() {
+  document.getElementById('modal-backdrop').style.display = 'none';
+}
+
+document.getElementById('btn-add').addEventListener('click', abrirModal);
+document.getElementById('btn-cancelar').addEventListener('click', fecharModal);
+document.getElementById('modal-backdrop').addEventListener('click', function(e) {
+  if (e.target.id === 'modal-backdrop') fecharModal();
+});
+
+document.getElementById('btn-confirmar').addEventListener('click', function() {
+  var deviceId = document.getElementById('f-device-id').value.trim();
+  var aparelho = document.getElementById('f-aparelho').value.trim();
+  if (!deviceId || !aparelho) {
+    mostrarMsg('Device ID e Aparelho são obrigatórios.', 'erro');
+    return;
+  }
+  var heartbeat = parseInt(document.getElementById('f-heartbeat').value, 10);
+  var ordem = parseInt(document.getElementById('f-ordem').value, 10);
+  var hibernacao = document.getElementById('f-hibernacao').value.trim();
+
+  var payload = {
+    device_id: deviceId,
+    aparelho: aparelho,
+    cor: document.getElementById('f-cor').value.trim() || '#999999',
+    tipo: document.getElementById('f-tipo').value.trim() || 'Produção',
+    heartbeat_min: isNaN(heartbeat) ? 60 : heartbeat,
+    hibernacao: hibernacao === '' ? null : hibernacao,
+    lora: false,
+    ativo: true,
+    academia_id: null,
+    ordem: isNaN(ordem) ? 1 : ordem
+  };
+
+  fetch(API + '/dispositivos', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  })
+    .then(function(r) {
+      if (r.status === 409) { mostrarMsg('device_id "' + deviceId + '" já existe.', 'erro'); return null; }
+      if (!r.ok) throw new Error();
+      return r.json();
+    })
+    .then(function(res) {
+      if (!res) return;
+      mostrarMsg('Dispositivo ' + deviceId + ' criado.', 'ok');
+      fecharModal();
+      carregar();
+    })
+    .catch(function() { mostrarMsg('Erro ao criar dispositivo.', 'erro'); });
+});
+
+carregar();
+</script>
+</body>
+</html>
