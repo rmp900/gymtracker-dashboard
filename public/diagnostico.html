@@ -56,6 +56,12 @@
     .divider { border-top: 1px solid #334155; margin: 2px 0; }
     .lora-badge { background: #0ea5e9; color: #fff; font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 4px; letter-spacing: .05em; margin-left: 4px; }
 
+    .battery-badge { margin-left: auto; font-size: .76rem; font-weight: 600; padding: 3px 8px; border-radius: 6px; background: #0f172a; border: 1px solid #334155; white-space: nowrap; }
+    .battery-badge.ok { color: #22c55e; border-color: #22c55e44; }
+    .battery-badge.warn { color: #f59e0b; border-color: #f59e0b44; }
+    .battery-badge.danger { color: #ef4444; border-color: #ef444444; }
+    .battery-badge.sem-dado { color: #475569; }
+
     #loading { text-align: center; color: #64748b; padding: 48px; }
     #error-msg { color: #ef4444; text-align: center; padding: 48px; display: none; }
 
@@ -212,25 +218,37 @@ function na(v, s) { return (v !== null && v !== undefined) ? v + (s||'') : '—'
 
 // ── Heartbeat ──────────────────────────────────────────────────────────────
 
-function renderHeartbeat(cfg, ultimoContato) {
+// bat_pct null/undefined/0 = "sem dado" — WROOM legado sempre envia 0 (placeholder,
+// nunca leu bateria real) e o gateway LoRa às vezes zera por queda de tensão durante
+// TX. Só FireBeetle C6 (002/003) manda leitura real via divisor onboard.
+function batteryHtml(batPct) {
+  if (batPct === null || batPct === undefined || batPct === 0) {
+    return '<div class="battery-badge sem-dado" title="Sem leitura real de bateria neste device">🔋 sem dado</div>';
+  }
+  var cls = batPct <= 15 ? 'danger' : batPct <= 30 ? 'warn' : 'ok';
+  return '<div class="battery-badge ' + cls + '">🔋 ' + Math.round(batPct) + '%</div>';
+}
+
+function renderHeartbeat(cfg, ultimoContato, batPct) {
+  var bat = batteryHtml(batPct);
   var d = parseBRT(ultimoContato);
   if (!d || isNaN(d.getTime())) {
-    return '<div class="heartbeat-row"><span class="heart">🩶</span><div><div class="heart-label dead">Sem dados</div><div class="heart-sub">Nenhum heartbeat recebido ainda</div></div></div>';
+    return '<div class="heartbeat-row"><span class="heart">🩶</span><div><div class="heart-label dead">Sem dados</div><div class="heart-sub">Nenhum heartbeat recebido ainda</div></div>' + bat + '</div>';
   }
   var diffMin = (Date.now() - d) / 60000;
   var h = horaBRT();
 
   // Hibernação (todos exceto LoRa, das 00h às 06h)
   if (cfg.hibernacao && h >= 0 && h < 6) {
-    return '<div class="heartbeat-row"><span class="heart hibernate">🐻</span><div><div class="heart-label hibernate">Hibernando</div><div class="heart-sub">Janela 00h–06h · acorda às 06h</div></div></div>';
+    return '<div class="heartbeat-row"><span class="heart hibernate">🐻</span><div><div class="heart-label hibernate">Hibernando</div><div class="heart-sub">Janela 00h–06h · acorda às 06h</div></div>' + bat + '</div>';
   }
 
   var alive = diffMin <= cfg.hbMin * FATOR_ALERTA;
   if (alive) {
     var mins = Math.round(diffMin);
-    return '<div class="heartbeat-row"><span class="heart alive">💚</span><div><div class="heart-label alive">Operacional</div><div class="heart-sub">Último heartbeat ' + (mins < 1 ? 'agora mesmo' : mins + 'min atrás') + ' · próximo em ~' + cfg.hbMin + 'min</div></div></div>';
+    return '<div class="heartbeat-row"><span class="heart alive">💚</span><div><div class="heart-label alive">Operacional</div><div class="heart-sub">Último heartbeat ' + (mins < 1 ? 'agora mesmo' : mins + 'min atrás') + ' · próximo em ~' + cfg.hbMin + 'min</div></div>' + bat + '</div>';
   } else {
-    return '<div class="heartbeat-row"><span class="heart">🩶</span><div><div class="heart-label dead">Precisa de atenção</div><div class="heart-sub">Sem heartbeat há ' + Math.round(diffMin) + 'min · esperado a cada ' + cfg.hbMin + 'min</div></div></div>';
+    return '<div class="heartbeat-row"><span class="heart">🩶</span><div><div class="heart-label dead">Precisa de atenção</div><div class="heart-sub">Sem heartbeat há ' + Math.round(diffMin) + 'min · esperado a cada ' + cfg.hbMin + 'min</div></div>' + bat + '</div>';
   }
 }
 
@@ -266,7 +284,7 @@ function renderCard(d) {
     + '<div class="device-name">' + cfg.nome + (cfg.isLora ? ' <span class="lora-badge">LoRa</span>' : '') + '</div>'
     + '<div class="device-id">' + d.device_id + '</div>'
     + '</div><div class="last-seen ' + (stale ? 'stale' : '') + '">' + tempoDesde(d.ultimo_contato) + '</div></div>'
-    + renderHeartbeat(cfg, d.ultimo_contato)
+    + renderHeartbeat(cfg, d.ultimo_contato, d.bat_pct)
     + metricsHtml(d, cfg.isLora ? 'RSSI (WiFi do Gateway)' : 'Sinal WiFi')
     + '</div>';
 }
