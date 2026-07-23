@@ -141,6 +141,8 @@
     }
     .acoes button.btn-salvar:hover { border-color: #16794f; color: #16794f; }
     .acoes button.btn-toggle:hover { border-color: #9a2c1f; color: #9a2c1f; }
+    .acoes button.btn-excluir { color: #9a2c1f; border-color: #f6c6bd; }
+    .acoes button.btn-excluir:hover { background: #fdecea; border-color: #9a2c1f; }
 
     .empty-msg {
       text-align: center;
@@ -187,7 +189,7 @@
 </header>
 
 <div class="container">
-  <div class="hint">✏️ Edite os campos direto na tabela (aparelho, cor, tipo, heartbeat, hibernação, ordem) e clique em <strong>Salvar</strong> na linha. <strong>Desativar</strong> remove o device do dashboard sem apagar o histórico.</div>
+  <div class="hint">✏️ Edite os campos direto na tabela (aparelho, cor, tipo, heartbeat, hibernação, ordem) e clique em <strong>Salvar</strong> na linha. <strong>Desativar</strong> tira o device do dashboard sem apagar o histórico. <strong>Excluir</strong> apaga o cadastro de vez (o histórico de sessões é preservado).</div>
   <div id="msg" class="msg" style="display:none"></div>
 
   <div class="table-card">
@@ -309,6 +311,7 @@ function renderizar() {
         '<td class="acoes">' +
           '<button class="btn-salvar">Salvar</button>' +
           '<button class="btn-toggle">' + (d.ativo ? 'Desativar' : 'Reativar') + '</button>' +
+          '<button class="btn-excluir">Excluir</button>' +
         '</td>';
       tbody.appendChild(tr);
 
@@ -318,6 +321,7 @@ function renderizar() {
 
       tr.querySelector('.btn-salvar').addEventListener('click', function() { salvar(d.device_id, tr); });
       tr.querySelector('.btn-toggle').addEventListener('click', function() { toggleAtivo(d.device_id, !d.ativo); });
+      tr.querySelector('.btn-excluir').addEventListener('click', function() { excluir(d.device_id); });
     });
 }
 
@@ -359,6 +363,24 @@ function toggleAtivo(deviceId, novoAtivo) {
     .then(function(r) { if (!r.ok) throw new Error(); return r.json(); })
     .then(function() { mostrarMsg('Status de ' + deviceId + ' atualizado.', 'ok'); carregar(); })
     .catch(function() { mostrarMsg('Erro ao atualizar status.', 'erro'); });
+}
+
+function excluir(deviceId) {
+  if (!confirm('Excluir ' + deviceId + ' PERMANENTEMENTE da lista de dispositivos?\n\n' +
+      'O histórico de sessões é preservado, mas o cadastro some da config, do dashboard e do diagnóstico. ' +
+      'Para só tirar do dashboard sem apagar, use "Desativar".')) return;
+  fetch(API + '/dispositivos/' + encodeURIComponent(deviceId), { method: 'DELETE' })
+    .then(function(r) {
+      if (r.status === 404) { mostrarMsg('device_id "' + deviceId + '" não encontrado.', 'erro'); return null; }
+      if (!r.ok) throw new Error();
+      return r.json();
+    })
+    .then(function(res) {
+      if (!res) return;
+      mostrarMsg('Dispositivo ' + deviceId + ' removido.', 'ok');
+      carregar();
+    })
+    .catch(function() { mostrarMsg('Erro ao excluir ' + deviceId + '.', 'erro'); });
 }
 
 // ── Modal de novo dispositivo ─────────────────────────────────────────────
