@@ -37,6 +37,11 @@
 
   .shell{position:relative;z-index:1;max-width:460px;margin:0 auto;padding:0 16px 40px}
 
+  /* No celular os blocos empilham; a partir de 1060px viram grid (ver o fim
+     do CSS). O gap aqui e que da o ritmo vertical — por isso os cabecalhos
+     de secao nao carregam margem superior propria. */
+  #app{display:grid;gap:22px;align-content:start}
+
   /* ── Cabecalho ────────────────────────────────────────────────── */
   header{
     display:flex;align-items:center;justify-content:space-between;gap:12px;
@@ -120,7 +125,7 @@
   /* ── Titulos de secao ─────────────────────────────────────────── */
   .sec{
     display:flex;align-items:baseline;justify-content:space-between;gap:10px;
-    margin:30px 2px 13px;
+    margin:0 2px 12px;
   }
   .sec-t{
     font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:16px;
@@ -195,6 +200,60 @@
   /* revelacao escalonada na carga */
   .rv{animation:rv .5s cubic-bezier(.2,.8,.3,1) backwards}
   @keyframes rv{from{opacity:0;transform:translateY(9px)}}
+
+  /* ── Tablet: aproveita a largura sem mudar a ordem de leitura ──── */
+  @media (min-width:760px){
+    .shell{max-width:760px;padding:0 24px 48px}
+    .groups{grid-template-columns:repeat(3,1fr)}
+    .machines{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+    .bars{height:78px}
+    .hero{padding:30px 26px 24px}
+  }
+
+  /* ── Desktop: duas colunas. O bloco de lotacao e o de disponibilidade
+     sao a resposta imediata e ficam lado a lado na primeira dobra; o
+     historico e a lista de aparelhos ocupam a largura inteira abaixo. ── */
+  @media (min-width:1060px){
+    .shell{max-width:1160px;padding:0 32px 64px}
+    header{padding:26px 4px 26px}
+    .brand-name{font-size:21px}
+
+    #app{
+      grid-template-columns:minmax(0,1.08fr) minmax(0,1fr);
+      gap:18px;
+      grid-template-areas:
+        "hero     grupos"
+        "pulso    pulso"
+        "maquinas maquinas";
+    }
+    .b-hero{grid-area:hero}
+    .b-grupos{grid-area:grupos}
+    .b-pulso{grid-area:pulso}
+    .b-maquinas{grid-area:maquinas}
+
+    /* hero e disponibilidade se acompanham em altura na mesma linha */
+    .b-hero,.b-grupos{display:flex;flex-direction:column}
+    .hero,.closed{flex:1;display:flex;flex-direction:column;justify-content:center}
+    .groups{flex:1;grid-template-columns:repeat(2,1fr);align-content:stretch}
+    .g{display:flex;flex-direction:column;justify-content:center}
+
+    .hero-status{font-size:clamp(58px,4.6vw,74px)}
+    .hero-sub{font-size:15px;max-width:34ch}
+    .hero{padding:38px 34px 32px}
+    .meter{margin-top:26px}
+    .seg{height:9px}
+
+    .machines{grid-template-columns:repeat(3,1fr)}
+    .bars{height:104px}
+    .btick span{font-size:10px}
+    .closed-title{font-size:44px}
+  }
+
+  /* Telas muito largas: 4 colunas de aparelhos evita linhas quilometricas */
+  @media (min-width:1400px){
+    .shell{max-width:1320px}
+    .machines{grid-template-columns:repeat(4,1fr)}
+  }
 
   @media (prefers-reduced-motion:reduce){
     *,*::before,*::after{animation:none!important;transition:none!important}
@@ -315,21 +374,21 @@ function render(dispositivos, sessoesRecentes, sessoesHoje){
 
   // ── Bloco principal ──────────────────────────────────────────
   if(!aberto){
-    h += '<div class="closed rv">'
+    h += '<section class="b b-hero"><div class="closed rv">'
       + '<div class="closed-mark"><svg viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></div>'
       + '<div class="closed-title">Academia fechada</div>'
       + '<div class="closed-sub">' + esc(proximaAbertura(agora)) + '</div>'
-      + '</div>';
+      + '</div></section>';
   }else{
     var segs = devs.map(function(d, i){
       return '<div class="seg' + (d.ativo ? ' on' : '') + '" style="animation-delay:' + (i*35) + 'ms"></div>';
     }).join('');
-    h += '<section class="hero rv" style="--accent:' + st.cor + '">'
+    h += '<section class="b b-hero"><div class="hero rv" style="--accent:' + st.cor + '">'
       + '<div class="hero-eyebrow">Agora · últimos 20 min</div>'
       + '<div class="hero-status">' + esc(st.label) + '</div>'
       + '<div class="hero-sub"><b>' + nAtivos + ' de ' + devs.length + '</b> aparelhos com movimento. ' + esc(st.sub) + '.</div>'
       + '<div class="meter">' + segs + '</div>'
-      + '</section>';
+      + '</div></section>';
   }
 
   // ── Disponibilidade por grupo ────────────────────────────────
@@ -346,7 +405,7 @@ function render(dispositivos, sessoesRecentes, sessoesHoje){
     });
 
   if(lista.length){
-    h += '<div class="sec"><div class="sec-t">Livre agora</div>'
+    h += '<section class="b b-grupos"><div class="sec"><div class="sec-t">Livre agora</div>'
       + '<div class="sec-n">por grupo muscular</div></div><div class="groups">';
     lista.forEach(function(g, i){
       var livres = g.total - g.ocupados;
@@ -360,7 +419,7 @@ function render(dispositivos, sessoesRecentes, sessoesHoje){
         + '<div class="g-label">' + txt + '</div>'
         + '<div class="g-pips">' + pips + '</div></div>';
     });
-    h += '</div>';
+    h += '</div></section>';
   }
 
   // ── Movimento por hora (hoje) ────────────────────────────────
@@ -393,7 +452,7 @@ function render(dispositivos, sessoesRecentes, sessoesHoje){
       if(hora < horaAtual && v > 0 && (calmo === null || v < faixa[calmo - H0])) calmo = hora;
     });
 
-    h += '<div class="sec"><div class="sec-t">Movimento hoje</div>'
+    h += '<section class="b b-pulso"><div class="sec"><div class="sec-t">Movimento hoje</div>'
       + '<div class="sec-n">sessões por hora</div></div>'
       + '<div class="pulse rv" style="animation-delay:.14s">'
       + '<div class="bars">' + barras + '</div>'
@@ -401,7 +460,7 @@ function render(dispositivos, sessoesRecentes, sessoesHoje){
       + (calmo !== null
           ? '<div class="pulse-note">Hoje o horário mais tranquilo até agora foi <b>' + calmo + 'h</b>.</div>'
           : '')
-      + '</div>';
+      + '</div></section>';
   }
 
   // ── Aparelhos ────────────────────────────────────────────────
@@ -409,7 +468,7 @@ function render(dispositivos, sessoesRecentes, sessoesHoje){
     var ordenados = devs.slice().sort(function(a,b){
       return (b.ativo - a.ativo) || a.nome.localeCompare(b.nome,'pt-BR');
     });
-    h += '<div class="sec"><div class="sec-t">Aparelhos</div>'
+    h += '<section class="b b-maquinas"><div class="sec"><div class="sec-t">Aparelhos</div>'
       + '<div class="sec-n">' + devs.length + ' monitorados</div></div><div class="machines">';
     ordenados.forEach(function(d, i){
       h += '<div class="m rv' + (d.ativo ? ' ativo' : '') + '" style="animation-delay:' + (100 + i*26) + 'ms">'
@@ -418,7 +477,7 @@ function render(dispositivos, sessoesRecentes, sessoesHoje){
         + '<div class="m-group">' + esc(d.grupo) + '</div></div>'
         + '<div class="m-state">' + (d.ativo ? 'em uso' : 'livre') + '</div></div>';
     });
-    h += '</div>';
+    h += '</div></section>';
   }
 
   document.getElementById('app').innerHTML = h;
