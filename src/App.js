@@ -68,6 +68,43 @@ function calcDonut(sessions, devicesById) {
   }));
 }
 
+// Grupos musculares do ranking. Manter em sincronia com AGRUPAMENTOS em
+// public/dispositivos.html (que ainda oferece "Diversos" como opção de cadastro).
+const AGRUPAMENTOS = ["Perna", "Costas", "Peito", "Braços", "Ombros", "Cardio"];
+const JANELA_AGRUP_MS = 2 * 60 * 60 * 1000; // ranking de agrupamentos: últimas 2h
+
+// Ranking por grupo muscular. Aparelho marcado como "Diversos" (ou ainda sem
+// classificação) atende a mais de um grupo — ex.: cross over faz peito e braço.
+// Ele não vira fatia própria: as sessões dele são rateadas proporcionalmente
+// entre os grupos específicos, para não sumirem da contagem. Quem mais treinou
+// absorve mais. O rateio é indicativo — o card mostra tendência de uso, não
+// contabilidade exata, então arredondamento simples basta.
+function calcAgrupamentos(sessions, devicesById) {
+  const base = {};
+  let diversos = 0;
+  sessions.forEach(s => {
+    const g = devicesById[s.deviceId]?.agrupamento;
+    if (AGRUPAMENTOS.includes(g)) base[g] = (base[g] || 0) + 1;
+    else diversos++;
+  });
+  const classificadas = Object.values(base).reduce((a, b) => a + b, 0);
+  // Sem nenhuma sessão classificada não há proporção para ratear — não dá para
+  // inventar distribuição, então o card pede a classificação em vez de chutar.
+  if (!classificadas) return { linhas: [], diversos, semBase: diversos > 0 };
+
+  const linhas = Object.entries(base).map(([nome, count]) => ({
+    nome, count, total: count + diversos * (count / classificadas),
+  }));
+  const geral = linhas.reduce((a, l) => a + l.total, 0);
+  return {
+    linhas: linhas
+      .map(l => ({ ...l, pct: Math.round((l.total / geral) * 100) }))
+      .sort((a, b) => b.total - a.total),
+    diversos,
+    semBase: false,
+  };
+}
+
 function computeStats(sessions) {
   const byHour = Array.from({ length: 24 }, (_, h) => ({ hora: `${String(h).padStart(2,"0")}h`, sessoes: 0 }));
   sessions.forEach(s => { if (s.start) byHour[s.start.getHours()].sessoes++; });
@@ -252,6 +289,13 @@ export default function GymTracker() {
   const maxBar   = Math.max(...stats.byHour.map(h => h.sessoes), 1);
   const temAlert = anomalas.length > 0 || dupCount > 0;
 
+  // A janela de 2h só faz sentido em tempo real; num dia passado ela cairia
+  // sempre vazia, então ali o ranking cobre o dia inteiro (o subtítulo avisa).
+  const janelaAgrup  = isToday(selectedDate)
+    ? sessions.filter(s => s.start && Date.now() - s.start.getTime() <= JANELA_AGRUP_MS)
+    : sessions;
+  const agrupamentos = calcAgrupamentos(janelaAgrup, devicesById);
+
   return (
     <div style={{ fontFamily: "'Barlow',sans-serif", background: BG, minHeight: "100vh" }}>
       <style>{`
@@ -336,6 +380,39 @@ export default function GymTracker() {
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
+
+            <div style={{ marginTop: 20, paddingTop: 18, borderTop: `1px solid ${BORDER}` }}>
+              <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12, marginBottom: 16, flexWrap: "wrap" }}>
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: O, textTransform: "uppercase", letterSpacing: "0.08em" }}>Agrupamentos mais treinados</div>
+                  <div style={{ fontSize: 13, color: MID, marginTop: 2 }}>
+                    {isToday(selectedDate) ? "Últimas 2 horas" : `Dia inteiro — ${fmtDateLabel(selectedDate)}`}
+                    {agrupamentos.diversos > 0 && !agrupamentos.semBase ? ` · ${agrupamentos.diversos} de aparelho diverso rateada${agrupamentos.diversos > 1 ? "s" : ""}` : ""}
+                  </div>
+                </div>
+                <div style={{ fontFamily: "'Barlow Condensed',sans-serif", fontSize: 28, fontWeight: 700, color: DARK }}>{janelaAgrup.length}</div>
+              </div>
+
+              {agrupamentos.linhas.length === 0 ? (
+                <div style={{ color: MID, fontSize: 13, textAlign: "center", padding: "28px 0" }}>
+                  {loading ? "Carregando..."
+                    : agrupamentos.semBase ? <>Nenhum aparelho classificado ainda — defina o agrupamento em <a href="/dispositivos.html" style={{ color: OD }}>Dispositivos</a>.</>
+                    : isToday(selectedDate) ? "Nenhuma sessão nas últimas 2 horas" : "Sem sessões neste dia"}
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
+                  {agrupamentos.linhas.map((l, i) => (
+                    <div key={l.nome} style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                      <span style={{ width: 74, flexShrink: 0, fontSize: 14, fontWeight: 500, color: DARK }}>{l.nome}</span>
+                      <div style={{ flex: 1, background: OL, borderRadius: 20, height: 10, overflow: "hidden" }}>
+                        <div style={{ width: `${l.pct}%`, height: "100%", background: i === 0 ? O : "#fdba74", borderRadius: 20 }} />
+                      </div>
+                      <span style={{ width: 42, flexShrink: 0, textAlign: "right", fontFamily: "'Barlow Condensed',sans-serif", fontSize: 18, fontWeight: 700, color: i === 0 ? O : DARK }}>{l.pct}%</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           <div style={{ background: WHITE, borderRadius: 12, border: `1px solid ${BORDER}`, padding: "22px", flex: "1 1 220px" }}>

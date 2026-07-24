@@ -103,6 +103,26 @@
       background: #fafaf8;
     }
     td input.num { min-width: 64px; }
+
+    td select {
+      min-width: 132px;
+      border: 1px solid #dcdcd5;
+      border-radius: 6px;
+      padding: 6px 8px;
+      font-size: .85rem;
+      font-family: inherit;
+      color: #1a1a1a;
+      background: #fafaf8;
+      cursor: pointer;
+    }
+    td select:hover { border-color: #bbb; background: #fff; }
+    td select:focus {
+      border-color: #D85A30;
+      background: #fff;
+      outline: none;
+      box-shadow: 0 0 0 2px rgba(216,90,48,.15);
+    }
+    td select.vazio { color: #999; }
     td input[type="text"]:hover, td input[type="number"]:hover {
       border-color: #bbb;
       background: #fff;
@@ -164,10 +184,12 @@
     }
     .modal h2 { font-size: 1.05rem; margin-bottom: 4px; }
     .modal label { font-size: .78rem; font-weight: 600; color: #666; display: block; margin-bottom: 4px; }
-    .modal input {
+    .modal input, .modal select {
       width: 100%; border: 1px solid #ddd; border-radius: 8px;
       padding: 9px 10px; font-size: .88rem; font-family: inherit;
+      background: #fff; color: #1a1a1a;
     }
+    .modal select { cursor: pointer; }
     .modal-row { display: flex; gap: 10px; }
     .modal-row > div { flex: 1; }
     .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px; }
@@ -200,6 +222,7 @@
           <th>Aparelho</th>
           <th>Cor</th>
           <th>Tipo</th>
+          <th>Agrupamento</th>
           <th>Heartbeat (min)</th>
           <th>Hibernação</th>
           <th>Ordem</th>
@@ -245,6 +268,10 @@
       </div>
     </div>
     <div>
+      <label>Agrupamento</label>
+      <select id="f-agrupamento"></select>
+    </div>
+    <div>
       <label>Hibernação (opcional)</label>
       <input type="text" id="f-hibernacao" placeholder="00:00-06:00" />
     </div>
@@ -258,6 +285,22 @@
 <script>
 var API = 'https://gymtracker-api-production-bc16.up.railway.app';
 var dispositivos = [];
+
+// Grupos musculares usados no ranking do dashboard. "Diversos" é para aparelho
+// que serve a mais de um grupo (ex.: cross over) — não vira fatia própria no
+// ranking, é rateado entre os grupos específicos. Manter em sincronia com
+// AGRUPAMENTOS em src/App.js.
+var AGRUPAMENTOS = ['Perna', 'Costas', 'Peito', 'Braços', 'Ombros', 'Cardio', 'Diversos'];
+
+function selectAgrupamento(valor) {
+  var atual = valor || '';
+  var html = '<select data-f="agrupamento" class="' + (atual === '' ? 'vazio' : '') + '">'
+    + '<option value=""' + (atual === '' ? ' selected' : '') + '>— não classificado —</option>';
+  html += AGRUPAMENTOS.map(function(g) {
+    return '<option value="' + esc(g) + '"' + (atual === g ? ' selected' : '') + '>' + esc(g) + '</option>';
+  }).join('');
+  return html + '</select>';
+}
 
 function esc(v) {
   return String(v == null ? '' : v).replace(/[&<>"']/g, function(c) {
@@ -304,6 +347,7 @@ function renderizar() {
         '<td class="cor-cell"><span class="swatch" style="background:' + esc(d.cor || '#ccc') + '"></span>' +
           '<input type="text" data-f="cor" value="' + esc(d.cor) + '"></td>' +
         '<td><input type="text" data-f="tipo" value="' + esc(d.tipo) + '"></td>' +
+        '<td>' + selectAgrupamento(d.agrupamento) + '</td>' +
         '<td><input type="number" min="0" class="num" data-f="heartbeat_min" value="' + esc(d.heartbeat_min) + '"></td>' +
         '<td><input type="text" data-f="hibernacao" placeholder="—" value="' + esc(d.hibernacao) + '"></td>' +
         '<td><input type="number" min="0" class="num" data-f="ordem" value="' + esc(d.ordem) + '"></td>' +
@@ -319,6 +363,9 @@ function renderizar() {
       var swatch = tr.querySelector('.swatch');
       corInput.addEventListener('input', function() { swatch.style.background = corInput.value || '#ccc'; });
 
+      var agrupSel = tr.querySelector('[data-f="agrupamento"]');
+      agrupSel.addEventListener('change', function() { agrupSel.className = agrupSel.value === '' ? 'vazio' : ''; });
+
       tr.querySelector('.btn-salvar').addEventListener('click', function() { salvar(d.device_id, tr); });
       tr.querySelector('.btn-toggle').addEventListener('click', function() { toggleAtivo(d.device_id, !d.ativo); });
       tr.querySelector('.btn-excluir').addEventListener('click', function() { excluir(d.device_id); });
@@ -332,7 +379,7 @@ function coletarCampos(tr) {
     var v = el.value;
     if (f === 'heartbeat_min' || f === 'ordem') {
       out[f] = v === '' ? null : parseInt(v, 10);
-    } else if (f === 'hibernacao') {
+    } else if (f === 'hibernacao' || f === 'agrupamento') {
       out[f] = v.trim() === '' ? null : v;
     } else {
       out[f] = v;
@@ -385,8 +432,12 @@ function excluir(deviceId) {
 
 // ── Modal de novo dispositivo ─────────────────────────────────────────────
 
+document.getElementById('f-agrupamento').innerHTML =
+  '<option value="">— não classificado —</option>'
+  + AGRUPAMENTOS.map(function(g) { return '<option value="' + esc(g) + '">' + esc(g) + '</option>'; }).join('');
+
 function abrirModal() {
-  ['f-device-id', 'f-aparelho', 'f-cor', 'f-tipo', 'f-heartbeat', 'f-ordem', 'f-hibernacao'].forEach(function(id) {
+  ['f-device-id', 'f-aparelho', 'f-cor', 'f-tipo', 'f-heartbeat', 'f-ordem', 'f-hibernacao', 'f-agrupamento'].forEach(function(id) {
     document.getElementById(id).value = '';
   });
   var maxOrdem = dispositivos.reduce(function(mx, d) { return Math.max(mx, d.ordem || 0); }, 0);
@@ -426,7 +477,8 @@ document.getElementById('btn-confirmar').addEventListener('click', function() {
     lora: false,
     ativo: true,
     academia_id: null,
-    ordem: isNaN(ordem) ? 1 : ordem
+    ordem: isNaN(ordem) ? 1 : ordem,
+    agrupamento: document.getElementById('f-agrupamento').value || null
   };
 
   fetch(API + '/dispositivos', {
