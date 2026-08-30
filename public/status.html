@@ -187,6 +187,48 @@
   .m-state{font-size:11px;font-weight:700;color:var(--faint);white-space:nowrap}
   .m.ativo .m-state{color:var(--brand)}
 
+  /* ── Rankings: mais treinados / mais usados ───────────────────── */
+  /* Duas janelas lado a lado (Hoje · Ultimas 2h) dentro de um card. No
+     celular empilham; a partir de 760px ficam em duas colunas. */
+  .rank{
+    display:grid;grid-template-columns:1fr;gap:6px;
+    background:var(--surface);border:1px solid var(--line);
+    border-radius:var(--radius);padding:15px 16px 13px;
+  }
+  .rk-col{min-width:0}
+  .rk-col + .rk-col{margin-top:8px;padding-top:14px;border-top:1px solid var(--line)}
+  .rk-h{
+    font-size:10.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--faint);margin-bottom:8px;
+  }
+  .rk-row{display:flex;align-items:center;gap:11px;padding:6px 0}
+  .rk-pos{
+    font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:14px;
+    color:var(--faint);width:14px;text-align:center;flex-shrink:0;
+  }
+  .rk-row.lead .rk-pos{color:var(--brand)}
+  .rk-main{flex:1;min-width:0}
+  .rk-name{
+    font-size:12.5px;font-weight:600;margin-bottom:5px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  }
+  .rk-track{height:6px;border-radius:3px;background:#2C2723;overflow:hidden}
+  .rk-fill{
+    height:100%;border-radius:3px;background:#5A463A;transform-origin:left;
+    animation:rkgrow .6s cubic-bezier(.2,.8,.3,1) backwards;
+  }
+  .rk-row.lead .rk-fill{
+    background:linear-gradient(90deg,var(--brand),#FF7D47);
+    box-shadow:0 0 10px rgba(255,90,31,.4);
+  }
+  @keyframes rkgrow{from{transform:scaleX(.04);opacity:.4}}
+  .rk-n{
+    font-family:'Barlow Condensed',sans-serif;font-weight:700;font-size:19px;line-height:1;
+    color:var(--muted);flex-shrink:0;min-width:20px;text-align:right;
+  }
+  .rk-row.lead .rk-n{color:var(--ink)}
+  .rk-empty{font-size:12px;color:var(--faint);padding:16px 2px;text-align:center}
+
   /* ── Erro / vazio ─────────────────────────────────────────────── */
   .msg{
     background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
@@ -208,6 +250,9 @@
     .machines{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
     .bars{height:78px}
     .hero{padding:30px 26px 24px}
+    /* janelas Hoje / Ultimas 2h lado a lado */
+    .rank{grid-template-columns:repeat(2,1fr);gap:24px}
+    .rk-col + .rk-col{margin-top:0;padding-top:0;border-top:none}
   }
 
   /* ── Desktop: duas colunas. O bloco de lotacao e o de disponibilidade
@@ -223,11 +268,14 @@
       gap:18px;
       grid-template-areas:
         "hero     grupos"
+        "treinos  usados"
         "pulso    pulso"
         "maquinas maquinas";
     }
     .b-hero{grid-area:hero}
     .b-grupos{grid-area:grupos}
+    .b-treinos{grid-area:treinos}
+    .b-usados{grid-area:usados}
     .b-pulso{grid-area:pulso}
     .b-maquinas{grid-area:maquinas}
 
@@ -337,6 +385,57 @@ function classificar(ativos, total){
   if(r <= 0.25)     return {label:'Tranquila',    sub:'Boa hora para treinar', cor:'var(--tranquila)'};
   if(r <= 0.55)     return {label:'Movimentada',  sub:'Fluxo normal, ainda tem aparelho livre', cor:'var(--movimentada)'};
   return              {label:'Cheia',           sub:'Maioria dos aparelhos em uso', cor:'var(--cheia)'};
+}
+
+// device_001 reenvia buffer apos HTTP 200 -> sessoes duplicadas. Mesma regra do
+// dashboard: mesmo device + inicio +-2s + mesma duracao = duplicata (CLAUDE.md, secao 8).
+function dedup(arr){
+  var visto = {};
+  return arr.filter(function(s){
+    var ini = parseBRT(s.inicio);
+    if(!ini) return true;
+    var d = s.duracao_segundos !== undefined ? s.duracao_segundos : s.duracao;
+    var k = s.device_id + '|' + Math.floor(ini.getTime()/2000) + '|' + d;
+    if(visto[k]) return false;
+    visto[k] = true;
+    return true;
+  });
+}
+
+// Conta sessoes por chave (grupo muscular ou aparelho) e ordena do mais usado.
+function contarRanking(sessoes, keyFn){
+  var m = {};
+  sessoes.forEach(function(s){
+    var k = keyFn(s);
+    if(k == null) return;
+    m[k] = (m[k] || 0) + 1;
+  });
+  return Object.keys(m).map(function(k){ return {nome:k, n:m[k]}; })
+    .sort(function(a,b){ return b.n - a.n || a.nome.localeCompare(b.nome,'pt-BR'); });
+}
+
+// Lista top-4 com barra proporcional ao lider da propria janela.
+function rankLista(items, vazio){
+  if(!items.length) return '<div class="rk-empty">' + esc(vazio) + '</div>';
+  var top = items.slice(0, 4), max = top[0].n;
+  return top.map(function(it, i){
+    var pct = Math.max(7, Math.round(it.n / max * 100));
+    return '<div class="rk-row' + (i === 0 ? ' lead' : '') + '">'
+      + '<span class="rk-pos">' + (i + 1) + '</span>'
+      + '<div class="rk-main"><div class="rk-name">' + esc(it.nome) + '</div>'
+      + '<div class="rk-track"><div class="rk-fill" style="width:' + pct + '%;animation-delay:' + (i * 70) + 'ms"></div></div></div>'
+      + '<span class="rk-n">' + it.n + '</span></div>';
+  }).join('');
+}
+
+// Um card com duas janelas: Hoje e Ultimas 2h.
+function secaoRanking(cls, titulo, sub, dia, duas, delay){
+  return '<section class="b ' + cls + '"><div class="sec"><div class="sec-t">' + esc(titulo) + '</div>'
+    + '<div class="sec-n">' + esc(sub) + '</div></div>'
+    + '<div class="rank rv" style="animation-delay:' + delay + '">'
+    + '<div class="rk-col"><div class="rk-h">Hoje</div>' + rankLista(dia, 'Ainda sem treinos hoje') + '</div>'
+    + '<div class="rk-col"><div class="rk-h">Últimas 2h</div>' + rankLista(duas, 'Sem treinos recentes') + '</div>'
+    + '</div></section>';
 }
 
 function render(dispositivos, sessoesRecentes, sessoesHoje){
@@ -462,6 +561,28 @@ function render(dispositivos, sessoesRecentes, sessoesHoje){
           : '')
       + '</div></section>';
   }
+
+  // ── Mais treinados / mais usados ─────────────────────────────
+  // Ranking por grupo muscular e por aparelho, em duas janelas: o dia inteiro
+  // e as ultimas 2h. Conta sessoes reais (sem heartbeat) e deduplicadas.
+  var cfg = {};
+  dispositivos.forEach(function(d){
+    cfg[d.device_id] = { nome: d.aparelho || d.device_id, grupo: d.agrupamento || 'Outros' };
+  });
+  var doDia = dedup(reais(sessoesHoje).filter(function(s){ return cfg[s.device_id]; }));
+  var DUAS_MS = 2 * 60 * 60 * 1000;
+  var duasH = doDia.filter(function(s){
+    var i = parseBRT(s.inicio);
+    return i && (t - i.getTime()) < DUAS_MS;
+  });
+
+  var grpDia = contarRanking(doDia, function(s){ return cfg[s.device_id].grupo; });
+  var grp2h  = contarRanking(duasH, function(s){ return cfg[s.device_id].grupo; });
+  var eqDia  = contarRanking(doDia, function(s){ return cfg[s.device_id].nome; });
+  var eq2h   = contarRanking(duasH, function(s){ return cfg[s.device_id].nome; });
+
+  h += secaoRanking('b-treinos', 'Mais treinados', 'grupos musculares', grpDia, grp2h, '.16s');
+  h += secaoRanking('b-usados',  'Mais usados',     'aparelhos',         eqDia,  eq2h,  '.2s');
 
   // ── Aparelhos ────────────────────────────────────────────────
   if(devs.length){
