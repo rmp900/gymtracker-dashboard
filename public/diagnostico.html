@@ -310,11 +310,19 @@ function fmtDurT(s) {
   return Math.floor(m / 60) + 'h ' + (m % 60) + 'min';
 }
 
-function fmtDtHoraT(str) {
-  var d = parseBRT(str);
+function fmtDataHoraD(d) {
   if (!d || isNaN(d.getTime())) return '—';
   var hora = d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
   return isTodayD(d) ? 'Hoje ' + hora : d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) + ' ' + hora;
+}
+function fmtDtHoraT(str) { return fmtDataHoraD(parseBRT(str)); }
+// O `fim` gravado é inconsistente em alguns devices (chega igual ao início). A
+// duração vem do millis() no firmware e é confiável — derivamos o fim de
+// início + duração. Fallback ao `fim` bruto quando não há duração (ex.: heartbeat).
+function fimDerivado(s, dur) {
+  var ini = parseBRT(s.inicio);
+  if (ini && !isNaN(ini.getTime()) && dur && dur > 0) return new Date(ini.getTime() + dur * 1000);
+  return parseBRT(s.fim);
 }
 
 var selectedDateTeste = new Date();
@@ -364,7 +372,7 @@ function carregarSessoesTeste(date) {
         return '<tr style="' + (isHb ? 'opacity:.65' : '') + '">'
           + '<td><span style="font-weight:600">' + nome + '</span></td>'
           + '<td>' + fmtDtHoraT(s.inicio) + '</td>'
-          + '<td>' + fmtDtHoraT(s.fim) + '</td>'
+          + '<td>' + fmtDataHoraD(fimDerivado(s, dur)) + '</td>'
           + '<td><span class="dur-val' + (isAnom ? ' warn' : '') + '">' + fmtDurT(dur) + (isAnom ? ' ⚠️' : '') + '</span></td>'
           + '<td>' + rssiH + '</td>'
           + '<td><span class="dev-badge">' + s.device_id + '</span></td>'

@@ -26,12 +26,22 @@ function parseSession(s, devicesById) {
   let dur = [s.duracao_segundos, s.duracao, s.duration].find(v => v !== null && v !== undefined);
   if (dur === undefined && start && end) dur = Math.round((new Date(end) - new Date(start)) / 1000);
   const tz = (str) => str && (str.includes("+") || str.endsWith("Z")) ? "" : "-03:00";
+  const startDate = start ? new Date(start + tz(start)) : null;
+  const duracao = dur !== undefined && dur !== null ? Math.round(Number(dur)) : null;
+  // O `fim` gravado no banco é inconsistente em alguns devices (chega igual ao
+  // início). A duração é calculada via millis() no firmware e é a fonte confiável
+  // — quando há início + duração > 0, derivamos o fim a partir deles, garantindo
+  // que a coluna Fim fique coerente com a Duração. Fallback ao `fim` bruto só
+  // quando não há duração (ex.: heartbeat).
+  let endDate = null;
+  if (startDate && duracao && duracao > 0) endDate = new Date(startDate.getTime() + duracao * 1000);
+  else if (end) endDate = new Date(end + tz(end));
   return {
     id: s.id, deviceId,
     deviceName: devicesById[deviceId]?.aparelho || deviceId || "Aparelho",
-    start: start ? new Date(start + tz(start)) : null,
-    end:   end   ? new Date(end   + tz(end))   : null,
-    duracao: dur !== undefined && dur !== null ? Math.round(Number(dur)) : null,
+    start: startDate,
+    end: endDate,
+    duracao,
   };
 }
 
