@@ -76,6 +76,9 @@
     .date-nav input[type=date] { background: transparent; border: none; color: #cbd5e1; font-size: 13px; font-weight: 600; outline: none; cursor: pointer; }
     .date-nav input[type=date]::-webkit-calendar-picker-indicator { filter: invert(.6); cursor: pointer; }
     .btn-hoje { background: #ea580c; border: none; color: #fff; font-size: 11px; font-weight: 600; border-radius: 5px; padding: 3px 8px; cursor: pointer; }
+    .device-filter { background: #1e293b; border: 1px solid #334155; color: #cbd5e1; font-size: 13px; font-weight: 600; border-radius: 8px; padding: 6px 30px 6px 12px; outline: none; cursor: pointer; appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2.5' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; }
+    .device-filter:focus { border-color: #475569; }
+    .device-filter option { background: #1e293b; color: #cbd5e1; }
     .test-table-wrap { background: #1e293b; border: 1px solid #334155; border-radius: 12px; overflow: hidden; }
     .test-table-meta { padding: 14px 20px 10px; border-bottom: 1px solid #334155; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
     .test-table-meta span { font-size: 12px; color: #64748b; }
@@ -117,6 +120,9 @@
       <div class="test-subtitle">Dados brutos de todos os dispositivos — heartbeats incluídos</div>
     </div>
     <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <select class="device-filter" id="device-filter" aria-label="Filtrar por dispositivo">
+        <option value="">Todos os dispositivos</option>
+      </select>
       <div class="date-nav">
         <button id="btn-prev">‹</button>
         <input type="date" id="date-picker" />
@@ -326,6 +332,8 @@ function fimDerivado(s, dur) {
 }
 
 var selectedDateTeste = new Date();
+var deviceFiltro = '';     // '' = todos; senão device_id selecionado
+var sessoesCache = [];     // sessões do dia já carregadas (filtro re-renderiza sem refetch)
 
 function updateDateUI() {
   var picker = document.getElementById('date-picker');
@@ -347,48 +355,85 @@ function carregarSessoesTeste(date) {
     .then(function(r) { return r.json(); })
     .then(function(raw) {
       var temCfg = Object.keys(DEVICE_CFG).length > 0;
-      var arr = (Array.isArray(raw) ? raw : raw.sessoes || [])
+      sessoesCache = (Array.isArray(raw) ? raw : raw.sessoes || [])
         .filter(function(s) { return !temCfg || (DEVICE_CFG[s.device_id] && DEVICE_CFG[s.device_id].ativo); })
         .sort(function(a, b) { return new Date(b.inicio) - new Date(a.inicio); });
-
-      var label = isTodayD(date) ? 'Hoje'
-        : date.toLocaleDateString('pt-BR', { weekday: 'short', day: 'numeric', month: 'short' });
-      if (meta) meta.textContent = arr.length + ' registros — ' + label + ' (sessões + heartbeats)';
-
-      if (!arr.length) {
-        if (body) body.innerHTML = '<div class="empty-row">Nenhum registro neste dia para os dispositivos em teste.</div>';
-        return;
-      }
-
-      var rows = arr.map(function(s) {
-        var nome = cfgDe(s.device_id).nome;
-        var dur = s.duracao_segundos !== undefined ? s.duracao_segundos : s.duracao;
-        var limite = limiteAnomalia(nome);
-        var isHb   = dur === 0;
-        var isAnom = !isHb && dur && dur > limite;
-        var rssiH = (s.rssi !== null && s.rssi !== undefined)
-          ? '<span style="color:#94a3b8">' + s.rssi + ' dBm</span>'
-          : '<span style="color:#475569">—</span>';
-        return '<tr style="' + (isHb ? 'opacity:.65' : '') + '">'
-          + '<td><span style="font-weight:600">' + nome + '</span></td>'
-          + '<td>' + fmtDtHoraT(s.inicio) + '</td>'
-          + '<td>' + fmtDataHoraD(fimDerivado(s, dur)) + '</td>'
-          + '<td><span class="dur-val' + (isAnom ? ' warn' : '') + '">' + fmtDurT(dur) + (isAnom ? ' ⚠️' : '') + '</span></td>'
-          + '<td>' + rssiH + '</td>'
-          + '<td><span class="dev-badge">' + s.device_id + '</span></td>'
-          + '</tr>';
-      }).join('');
-
-      if (body) body.innerHTML = '<table class="test-table"><thead><tr>'
-        + '<th>Dispositivo</th><th>Início</th><th>Fim</th>'
-        + '<th>Duração</th><th>RSSI</th><th>Device ID</th>'
-        + '</tr></thead><tbody>' + rows + '</tbody></table>';
+      renderTabela();
     })
     .catch(function(e) { if (meta) meta.textContent = 'Erro: ' + e.message; });
 }
 
+// Aplica o filtro por device ao cache e desenha a tabela. Separado do fetch pra
+// trocar o filtro sem nova chamada de API.
+function renderTabela() {
+  var meta = document.getElementById('test-meta');
+  var body = document.getElementById('test-table-body');
+  var arr = deviceFiltro
+    ? sessoesCache.filter(function(s) { return s.device_id === deviceFiltro; })
+    : sessoesCache;
+
+  var label = isTodayD(selectedDateTeste) ? 'Hoje'
+    : selectedDateTeste.toLocaleDateString('pt-BR', { weekday: 'short', day: 'numeric', month: 'short' });
+  var filtroTxt = deviceFiltro ? ' · ' + cfgDe(deviceFiltro).nome : '';
+  if (meta) meta.textContent = arr.length + ' registros — ' + label + filtroTxt + ' (sessões + heartbeats)';
+
+  if (!arr.length) {
+    if (body) body.innerHTML = '<div class="empty-row">'
+      + (deviceFiltro ? 'Nenhum registro neste dia para este dispositivo.'
+                      : 'Nenhum registro neste dia para os dispositivos em teste.')
+      + '</div>';
+    return;
+  }
+
+  var rows = arr.map(function(s) {
+    var nome = cfgDe(s.device_id).nome;
+    var dur = s.duracao_segundos !== undefined ? s.duracao_segundos : s.duracao;
+    var limite = limiteAnomalia(nome);
+    var isHb   = dur === 0;
+    var isAnom = !isHb && dur && dur > limite;
+    var rssiH = (s.rssi !== null && s.rssi !== undefined)
+      ? '<span style="color:#94a3b8">' + s.rssi + ' dBm</span>'
+      : '<span style="color:#475569">—</span>';
+    return '<tr style="' + (isHb ? 'opacity:.65' : '') + '">'
+      + '<td><span style="font-weight:600">' + nome + '</span></td>'
+      + '<td>' + fmtDtHoraT(s.inicio) + '</td>'
+      + '<td>' + fmtDataHoraD(fimDerivado(s, dur)) + '</td>'
+      + '<td><span class="dur-val' + (isAnom ? ' warn' : '') + '">' + fmtDurT(dur) + (isAnom ? ' ⚠️' : '') + '</span></td>'
+      + '<td>' + rssiH + '</td>'
+      + '<td><span class="dev-badge">' + s.device_id + '</span></td>'
+      + '</tr>';
+  }).join('');
+
+  if (body) body.innerHTML = '<table class="test-table"><thead><tr>'
+    + '<th>Dispositivo</th><th>Início</th><th>Fim</th>'
+    + '<th>Duração</th><th>RSSI</th><th>Device ID</th>'
+    + '</tr></thead><tbody>' + rows + '</tbody></table>';
+}
+
+// Popula o dropdown de filtro com os devices ativos (nome — device_id), ordenados
+// por nome. Preserva a seleção atual entre refreshes.
+function popularFiltroDevices() {
+  var sel = document.getElementById('device-filter');
+  if (!sel) return;
+  var ids = Object.keys(DEVICE_CFG).filter(function(id) { return DEVICE_CFG[id].ativo; })
+    .sort(function(a, b) { return cfgDe(a).nome.localeCompare(cfgDe(b).nome, 'pt-BR'); });
+  var atual = sel.value;
+  sel.innerHTML = '<option value="">Todos os dispositivos</option>'
+    + ids.map(function(id) {
+        return '<option value="' + id + '">' + cfgDe(id).nome + ' — ' + id + '</option>';
+      }).join('');
+  // se o device filtrado ainda existe, mantém a seleção
+  sel.value = ids.indexOf(atual) !== -1 ? atual : '';
+  deviceFiltro = sel.value;
+}
+
 function initTabelaTeste() {
   updateDateUI();
+  popularFiltroDevices();
+  document.getElementById('device-filter').addEventListener('change', function(e) {
+    deviceFiltro = e.target.value;
+    renderTabela();   // só re-renderiza; não precisa refetch
+  });
   carregarSessoesTeste(selectedDateTeste);
   document.getElementById('btn-prev').addEventListener('click', function() {
     selectedDateTeste = addDaysD(selectedDateTeste, -1);
