@@ -316,11 +316,17 @@ export default function GymTracker() {
         .fade-up{animation:fadeUp .35s ease both}
         tr:hover td{background:#fafaf8!important}
         input[type="date"]::-webkit-calendar-picker-indicator{opacity:.5;cursor:pointer}
+        /* Header responsivo: em telas estreitas a nav quebra em várias linhas
+           e a altura vira automática, senão os botões saem da tela (retrato). */
+        @media (max-width:720px){
+          .gt-header{height:auto!important;flex-wrap:wrap;row-gap:10px;padding:10px 16px!important}
+          .gt-nav{flex-wrap:wrap;width:100%}
+        }
       `}</style>
 
-      <header style={{ background: O, backgroundImage: "repeating-linear-gradient(135deg,transparent,transparent 20px,rgba(0,0,0,.04) 20px,rgba(0,0,0,.04) 22px)", padding: "0 28px", display: "flex", alignItems: "center", justifyContent: "space-between", height: 56 }}>
+      <header className="gt-header" style={{ background: O, backgroundImage: "repeating-linear-gradient(135deg,transparent,transparent 20px,rgba(0,0,0,.04) 20px,rgba(0,0,0,.04) 22px)", padding: "0 28px", display: "flex", alignItems: "center", justifyContent: "space-between", height: 56 }}>
         <div style={{ fontFamily: "'Barlow Condensed',sans-serif", fontSize: 22, fontWeight: 800, color: WHITE, letterSpacing: "0.03em" }}>GYMTRACKER</div>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <div className="gt-nav" style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <a href="/diagnostico.html" style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 600, color: WHITE, textDecoration: "none", background: "rgba(0,0,0,.20)", border: "1px solid rgba(255,255,255,.35)", borderRadius: 8, padding: "5px 12px" }}>🔧 Diagnóstico</a>
           <a href="/instalacao.html" style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 600, color: WHITE, textDecoration: "none", background: "rgba(0,0,0,.20)", border: "1px solid rgba(255,255,255,.35)", borderRadius: 8, padding: "5px 12px" }}>🛠️ Instalação</a>
           <a href="/dispositivos.html" style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 600, color: WHITE, textDecoration: "none", background: "rgba(0,0,0,.20)", border: "1px solid rgba(255,255,255,.35)", borderRadius: 8, padding: "5px 12px" }}>⚙️ Dispositivos</a>
