@@ -324,6 +324,7 @@ export default function GymTracker() {
           <a href="/diagnostico.html" style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 600, color: WHITE, textDecoration: "none", background: "rgba(0,0,0,.20)", border: "1px solid rgba(255,255,255,.35)", borderRadius: 8, padding: "5px 12px" }}>🔧 Diagnóstico</a>
           <a href="/instalacao.html" style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 600, color: WHITE, textDecoration: "none", background: "rgba(0,0,0,.20)", border: "1px solid rgba(255,255,255,.35)", borderRadius: 8, padding: "5px 12px" }}>🛠️ Instalação</a>
           <a href="/dispositivos.html" style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 600, color: WHITE, textDecoration: "none", background: "rgba(0,0,0,.20)", border: "1px solid rgba(255,255,255,.35)", borderRadius: 8, padding: "5px 12px" }}>⚙️ Dispositivos</a>
+          <a href="/relatorio.html" style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 12, fontWeight: 600, color: WHITE, textDecoration: "none", background: "rgba(0,0,0,.20)", border: "1px solid rgba(255,255,255,.35)", borderRadius: 8, padding: "5px 12px" }}>📊 Relatório</a>
           <a href="/status.html" target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(255,255,255,.18)", borderRadius: 20, padding: "4px 12px" }}>
               <div style={{ width: 7, height: 7, borderRadius: "50%", background: WHITE }} />

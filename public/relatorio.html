@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GymTracker — Relatório de Uso</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Barlow:wght@400;500;600&display=swap');
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --o: #ea580c; --ol: #fff7ed; --od: #9a3412; --bg: #f5f4f0;
+      --white: #ffffff; --dark: #1c1917; --mid: #78716c; --border: #e7e5e4;
+    }
+    body { font-family: 'Barlow', sans-serif; background: var(--bg); color: var(--dark); min-height: 100vh; }
+
+    header {
+      background: var(--o);
+      background-image: repeating-linear-gradient(135deg, transparent, transparent 20px, rgba(0,0,0,.04) 20px, rgba(0,0,0,.04) 22px);
+      padding: 0 28px; height: 56px;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .brand { font-family: 'Barlow Condensed', sans-serif; font-size: 22px; font-weight: 800; color: #fff; letter-spacing: .03em; }
+    .brand small { font-weight: 600; font-size: 13px; opacity: .85; letter-spacing: .02em; }
+    header a.back {
+      display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: #fff;
+      text-decoration: none; background: rgba(0,0,0,.20); border: 1px solid rgba(255,255,255,.35);
+      border-radius: 8px; padding: 6px 14px;
+    }
+    header a.back:hover { background: rgba(0,0,0,.32); }
+
+    main { padding: 24px 28px 40px; max-width: 1100px; margin: 0 auto; }
+
+    /* Controles de período */
+    .controls { display: flex; align-items: flex-end; gap: 14px; flex-wrap: wrap; margin-bottom: 22px; }
+    .field { display: flex; flex-direction: column; gap: 5px; }
+    .field label { font-size: 11px; font-weight: 700; color: var(--o); text-transform: uppercase; letter-spacing: .08em; }
+    .field input[type=date] {
+      font-family: 'Barlow', sans-serif; font-size: 14px; font-weight: 600; color: var(--dark);
+      background: var(--white); border: 1px solid var(--border); border-radius: 10px; padding: 8px 12px; outline: none; cursor: pointer;
+    }
+    .field input[type=date]:focus { border-color: var(--o); }
+    .field input[type=date]::-webkit-calendar-picker-indicator { opacity: .5; cursor: pointer; }
+    .presets { display: flex; gap: 6px; flex-wrap: wrap; }
+    .presets button {
+      font-family: 'Barlow', sans-serif; font-size: 12px; font-weight: 600; color: var(--mid);
+      background: var(--white); border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; cursor: pointer;
+    }
+    .presets button:hover { border-color: var(--o); color: var(--o); }
+    .presets button.active { background: var(--o); border-color: var(--o); color: #fff; }
+
+    /* Cards de resumo */
+    .row { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 20px; }
+    .stat { background: var(--white); border-radius: 12px; padding: 20px 22px; border: 1px solid var(--border); flex: 1; min-width: 150px; }
+    .stat .label { font-size: 12px; font-weight: 600; color: var(--o); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 8px; }
+    .stat .value { font-family: 'Barlow Condensed', sans-serif; font-size: 42px; font-weight: 700; color: var(--dark); line-height: 1; }
+    .stat .sub { font-size: 12px; color: var(--mid); margin-top: 6px; }
+
+    /* Card principal */
+    .card { background: var(--white); border-radius: 12px; border: 1px solid var(--border); overflow: hidden; }
+    .card-head { padding: 18px 22px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+    .card-head .title { font-size: 12px; font-weight: 600; color: var(--o); text-transform: uppercase; letter-spacing: .08em; }
+    .card-head .desc { font-size: 13px; color: var(--mid); margin-top: 2px; }
+    .btn-reload { background: transparent; border: 1px solid var(--border); border-radius: 8px; padding: 5px 14px; font-size: 12px; font-weight: 500; color: var(--mid); cursor: pointer; font-family: 'Barlow', sans-serif; }
+    .btn-reload:hover { border-color: var(--o); color: var(--o); }
+
+    table { width: 100%; border-collapse: collapse; }
+    th { padding: 10px 22px; text-align: left; font-size: 11px; font-weight: 600; color: var(--mid); text-transform: uppercase; letter-spacing: .07em; border-bottom: 1px solid var(--border); background: #fafaf8; }
+    th.num, td.num { text-align: right; }
+    td { padding: 13px 22px; border-bottom: 1px solid var(--border); font-size: 14px; color: var(--dark); vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #fafaf8; }
+    .rank { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 4px; background: var(--ol); color: var(--od); font-family: 'Barlow Condensed', sans-serif; font-size: 12px; font-weight: 700; margin-right: 10px; }
+    .rank.top { background: var(--o); color: #fff; }
+    .dev-name { font-weight: 500; }
+    .horas { font-family: 'Barlow Condensed', sans-serif; font-size: 20px; font-weight: 700; color: var(--dark); }
+    .horas.top { color: var(--o); }
+    .barwrap { display: flex; align-items: center; gap: 12px; }
+    .bar { flex: 1; min-width: 90px; background: var(--ol); border-radius: 20px; height: 10px; overflow: hidden; }
+    .bar > i { display: block; height: 100%; background: #fdba74; border-radius: 20px; }
+    .bar > i.top { background: var(--o); }
+    .muted { color: var(--mid); }
+    .devid { font-family: monospace; font-size: 12px; color: var(--mid); }
+
+    .state { padding: 48px; text-align: center; color: var(--mid); font-size: 14px; }
+    .foot { padding: 14px 22px; border-top: 1px solid var(--border); font-size: 12px; color: var(--mid); line-height: 1.5; }
+    .note { background: #fff8f3; border: 1px solid #f3d9c9; border-radius: 10px; padding: 12px 16px; font-size: 13px; color: #7a4a33; line-height: 1.5; margin-bottom: 20px; }
+    .note strong { color: var(--od); }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="brand">GYMTRACKER <small>· Relatório</small></div>
+  <a class="back" href="/">← Voltar ao Dashboard</a>
+</header>
+
+<main>
+  <div class="note">
+    📊 <strong>Horas de uso por equipamento.</strong> Selecione um período para ver quanto tempo cada aparelho ficou em operação.
+    Esta é a base para planejar <strong>manutenção preventiva</strong> — equipamentos com mais horas de trabalho pedem revisão antes.
+  </div>
+
+  <div class="controls">
+    <div class="field">
+      <label for="inicio">Início</label>
+      <input type="date" id="inicio" />
+    </div>
+    <div class="field">
+      <label for="fim">Fim</label>
+      <input type="date" id="fim" />
+    </div>
+    <div class="presets" id="presets">
+      <button data-dias="7">7 dias</button>
+      <button data-dias="30" class="active">30 dias</button>
+      <button data-dias="90">90 dias</button>
+    </div>
+  </div>
+
+  <div class="row" id="stats"></div>
+
+  <div class="card">
+    <div class="card-head">
+      <div>
+        <div class="title">Horas por Equipamento</div>
+        <div class="desc" id="periodo-desc">—</div>
+      </div>
+      <button class="btn-reload" id="btn-reload">↺ Atualizar</button>
+    </div>
+    <div id="tabela"><div class="state">Carregando...</div></div>
+    <div class="foot" id="rodape" style="display:none"></div>
+  </div>
+</main>
+
+<script>
+var API = 'https://gymtracker-api-production-bc16.up.railway.app';
+
+// Config de devices (nome/cor/ativo) vem de /dispositivos — mesma fonte do
+// dashboard e da tela de configuração. Só aparelhos ativos entram no relatório,
+// igual ao dashboard principal.
+var DEVICE_CFG = {};
+
+// ── Helpers de data ────────────────────────────────────────────────────────
+function toYMD(d) { return d.toLocaleDateString('sv-SE'); }
+function addDays(d, n) { var x = new Date(d); x.setDate(x.getDate() + n); return x; }
+
+// Timestamps do banco estão em BRT (UTC-3), não UTC — parse com sufixo -03:00
+// quando o horário não traz fuso próprio (ver CLAUDE.md, regra crítica de timezone).
+function parseBRT(str) {
+  if (!str) return null;
+  if (/Z$|[+-]\d{2}:\d{2}$/.test(str)) return new Date(str);
+  return new Date(str + '-03:00');
+}
+
+// Esteiras rodam sessões longas — limite de anomalia maior. Derivado do nome pra
+// pegar qualquer esteira nova sem editar código (mesma lógica do diagnóstico).
+function limiteAnomalia(nome) { return /esteira/i.test(nome || '') ? 14400 : 3600; }
+
+function nomeDe(id) { return (DEVICE_CFG[id] && DEVICE_CFG[id].aparelho) || id; }
+
+// Formata segundos em "Xh Ymin" — unidade de trabalho do equipamento.
+function fmtHoras(seg) {
+  if (!seg || seg <= 0) return '0min';
+  var h = Math.floor(seg / 3600), m = Math.round((seg % 3600) / 60);
+  if (m === 60) { h++; m = 0; }
+  if (h === 0) return m + 'min';
+  return m > 0 ? h + 'h ' + m + 'min' : h + 'h';
+}
+function fmtDur(seg) {
+  if (!seg || seg <= 0) return '—';
+  seg = Math.round(seg);
+  var m = Math.floor(seg / 60);
+  if (m < 1) return seg + 's';
+  if (m < 60) return m + 'min';
+  return Math.floor(m / 60) + 'h ' + (m % 60) + 'min';
+}
+
+// ── Limpeza de sessões (espelha limpar() do App.js) ────────────────────────
+// Heartbeats (duração 0) fora; devices inativos fora; dedup (mesmo device +
+// início ±2s + mesma duração = duplicata do buffer reenviado); anomalias
+// (duração acima do limite do aparelho) fora — são sessões fantasma.
+function durSessao(s) {
+  var d = [s.duracao_segundos, s.duracao, s.duration].find(function(v) { return v !== null && v !== undefined; });
+  return (d === null || d === undefined) ? null : Math.round(Number(d));
+}
+
+function limpar(raw) {
+  var temCfg = Object.keys(DEVICE_CFG).length > 0;
+  var seen = {};
+  var normais = [], anomalas = 0, dup = 0;
+  (raw || []).forEach(function(s) {
+    var id = s.device_id || s.deviceId || s.device || '';
+    var dur = durSessao(s);
+    if (dur === 0) return;                                   // heartbeat
+    if (temCfg && !(DEVICE_CFG[id] && DEVICE_CFG[id].ativo)) return; // device inativo/desconhecido
+    var ini = parseBRT(s.inicio || s.start_time || s.started_at || s.created_at);
+    var bucket = ini ? Math.floor(ini.getTime() / 2000) : 'x';
+    var k = id + '|' + bucket + '|' + dur;
+    if (seen[k]) { dup++; return; }                          // duplicata
+    seen[k] = true;
+    if (dur && dur > limiteAnomalia(nomeDe(id))) { anomalas++; return; } // anomalia/fantasma
+    normais.push({ id: id, dur: dur || 0 });
+  });
+  return { normais: normais, anomalas: anomalas, dup: dup };
+}
+
+// ── Agregação por equipamento ──────────────────────────────────────────────
+function agregar(normais) {
+  var map = {};
+  normais.forEach(function(s) {
+    if (!map[s.id]) map[s.id] = { id: s.id, seg: 0, sessoes: 0 };
+    map[s.id].seg += s.dur;
+    map[s.id].sessoes++;
+  });
+  return Object.keys(map).map(function(id) { return map[id]; })
+    .sort(function(a, b) { return b.seg - a.seg; });
+}
+
+// ── Render ─────────────────────────────────────────────────────────────────
+function diasEntre(ini, fim) {
+  return Math.round((new Date(toYMD(fim)) - new Date(toYMD(ini))) / 86400000) + 1;
+}
+
+function render(dados, ini, fim) {
+  var linhas = agregar(dados.normais);
+  var totalSeg = linhas.reduce(function(a, l) { return a + l.seg; }, 0);
+  var totalSes = linhas.reduce(function(a, l) { return a + l.sessoes; }, 0);
+  var maxSeg = linhas.length ? linhas[0].seg : 1;
+  var dias = diasEntre(ini, fim);
+
+  document.getElementById('periodo-desc').textContent =
+    linhas.length + ' equipamento' + (linhas.length !== 1 ? 's' : '') + ' com uso · '
+    + toYMD(ini).split('-').reverse().join('/') + ' a ' + toYMD(fim).split('-').reverse().join('/');
+
+  // Cards de resumo
+  document.getElementById('stats').innerHTML =
+      card('Horas totais', fmtHoras(totalSeg), 'somadas no período')
+    + card('Equipamentos', String(linhas.length), 'com uso registrado')
+    + card('Sessões', String(totalSes), 'válidas no período')
+    + card('Período', dias + (dias === 1 ? ' dia' : ' dias'), 'analisados');
+
+  var tabela = document.getElementById('tabela');
+  if (!linhas.length) {
+    tabela.innerHTML = '<div class="state">Nenhum uso registrado neste período.</div>';
+    document.getElementById('rodape').style.display = 'none';
+    return;
+  }
+
+  var rows = linhas.map(function(l, i) {
+    var top = i === 0;
+    var pct = Math.round((l.seg / maxSeg) * 100);
+    var media = l.sessoes ? l.seg / l.sessoes : 0;
+    return '<tr>'
+      + '<td><span class="rank' + (top ? ' top' : '') + '">' + (i + 1) + '</span>'
+        + '<span class="dev-name">' + nomeDe(l.id) + '</span>'
+        + '<div class="devid" style="margin-left:32px">' + l.id + '</div></td>'
+      + '<td><div class="barwrap">'
+        + '<span class="horas' + (top ? ' top' : '') + '" style="min-width:96px">' + fmtHoras(l.seg) + '</span>'
+        + '<div class="bar"><i class="' + (top ? 'top' : '') + '" style="width:' + pct + '%"></i></div>'
+        + '</div></td>'
+      + '<td class="num">' + l.sessoes + '</td>'
+      + '<td class="num muted">' + fmtDur(media) + '</td>'
+      + '</tr>';
+  }).join('');
+
+  tabela.innerHTML = '<table><thead><tr>'
+    + '<th>Equipamento</th><th>Horas de uso</th>'
+    + '<th class="num">Sessões</th><th class="num">Média/sessão</th>'
+    + '</tr></thead><tbody>' + rows + '</tbody></table>';
+
+  var rodape = document.getElementById('rodape');
+  var avisos = [];
+  if (dados.dup > 0) avisos.push(dados.dup + ' duplicata' + (dados.dup > 1 ? 's' : '') + ' removida' + (dados.dup > 1 ? 's' : ''));
+  if (dados.anomalas > 0) avisos.push(dados.anomalas + ' sessão' + (dados.anomalas > 1 ? 'ões' : '') + ' anômala' + (dados.anomalas > 1 ? 's' : '') + ' excluída' + (dados.anomalas > 1 ? 's' : ''));
+  rodape.style.display = 'block';
+  rodape.innerHTML = 'Horas somadas a partir da duração de cada sessão válida (heartbeats não contam).'
+    + (avisos.length ? ' · ' + avisos.join(' · ') + '.' : '');
+}
+
+function card(label, value, sub) {
+  return '<div class="stat"><div class="label">' + label + '</div>'
+    + '<div class="value">' + value + '</div><div class="sub">' + sub + '</div></div>';
+}
+
+// ── Fetch ──────────────────────────────────────────────────────────────────
+function periodoAtual() {
+  var ini = new Date(document.getElementById('inicio').value + 'T12:00:00');
+  var fim = new Date(document.getElementById('fim').value + 'T12:00:00');
+  if (isNaN(ini) || isNaN(fim)) return null;
+  if (ini > fim) { var t = ini; ini = fim; fim = t; } // tolera datas invertidas
+  return { ini: ini, fim: fim };
+}
+
+function carregar() {
+  var p = periodoAtual();
+  if (!p) return;
+  var tabela = document.getElementById('tabela');
+  tabela.innerHTML = '<div class="state">Carregando...</div>';
+  fetch(API + '/sessoes/periodo?inicio=' + toYMD(p.ini) + '&fim=' + toYMD(p.fim), { signal: AbortSignal.timeout(15000) })
+    .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .then(function(raw) {
+      var arr = Array.isArray(raw) ? raw : (raw.sessoes || []);
+      render(limpar(arr), p.ini, p.fim);
+    })
+    .catch(function(e) {
+      tabela.innerHTML = '<div class="state">Erro ao carregar: ' + e.message + '</div>';
+      document.getElementById('rodape').style.display = 'none';
+    });
+}
+
+function carregarDispositivos() {
+  return fetch(API + '/dispositivos', { signal: AbortSignal.timeout(10000) })
+    .then(function(r) { return r.ok ? r.json() : []; })
+    .then(function(lista) {
+      var map = {};
+      (lista || []).forEach(function(d) { d.ativo = d.ativo !== false; map[d.device_id] = d; });
+      DEVICE_CFG = map;
+    })
+    .catch(function() { /* segue com config vazia — usa device_id como nome */ });
+}
+
+// ── Controles ──────────────────────────────────────────────────────────────
+function setPreset(dias) {
+  var fim = new Date();
+  document.getElementById('inicio').value = toYMD(addDays(fim, -dias));
+  document.getElementById('fim').value = toYMD(fim);
+  document.querySelectorAll('#presets button').forEach(function(b) {
+    b.classList.toggle('active', Number(b.dataset.dias) === dias);
+  });
+}
+function limparPresetAtivo() {
+  document.querySelectorAll('#presets button').forEach(function(b) { b.classList.remove('active'); });
+}
+
+document.getElementById('presets').addEventListener('click', function(e) {
+  var b = e.target.closest('button'); if (!b) return;
+  setPreset(Number(b.dataset.dias));
+  carregar();
+});
+document.getElementById('inicio').addEventListener('change', function() { limparPresetAtivo(); carregar(); });
+document.getElementById('fim').addEventListener('change', function() { limparPresetAtivo(); carregar(); });
+document.getElementById('fim').max = toYMD(new Date());
+document.getElementById('inicio').max = toYMD(new Date());
+document.getElementById('btn-reload').addEventListener('click', carregar);
+
+// Boot: config dos devices → período padrão (30 dias) → carrega.
+setPreset(30);
+carregarDispositivos().then(carregar);
+</script>
+</body>
+</html>
